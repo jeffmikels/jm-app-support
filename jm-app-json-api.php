@@ -241,8 +241,11 @@ function jmapp_strip_tags_content_simply_json($text, $tags = '') {
 }
 
 
+// query is passed by reference
 function jmapp_simply_json_custom_query($query)
 {
+	// if (is_admin() || ! $query->is_main_query()) return;
+	
 	if (isset($_REQUEST['json'] ))
 	{
 
@@ -257,32 +260,48 @@ function jmapp_simply_json_custom_query($query)
 		if (isset($_REQUEST['page'])) $query->set('offset',((int)$_REQUEST['page'] - 1) * $count);
 
 		// post types
-		$query->set('post_type', 'any');
+		$query->query['post_type'] = 'any';
 		if (isset($_REQUEST['post_type'])) $query->set('post_type',$_REQUEST['post_type']);
 		if (isset($_REQUEST['orderby'])) $query->set('orderby',$_REQUEST['orderby']);
 		if (isset($_REQUEST['order'])) $query->set('order',$_REQUEST['order']);
-
-		// Wordpress Picks up the 'p' query directly, but we need to
+		
+		// Wordpress Picks up the 'p' query directly (for individual posts), but we need to
 		// reset the post_type to override any accidental post_type settings above
 		if (isset($_REQUEST['p'])) $query->set('post_type','any');
-
+		
 		// query by simple search
 		// To handle searching, simply use the 's' query variable directly.
-
-
+		
 		// query by meta values
 		if (isset($_REQUEST['meta_query'])) $query->set('meta_query',$_REQUEST['meta_query']);
+		
+		// do debug
 		// if (isset($_REQUEST['debug']))
 		// {
 		// 	print_r($query);
 		// 	print_r($_REQUEST);
-		// 	// die();
+		// 	die();
 		// }
 	}
-	return $query;
+	// not needed... the variable is passed by reference
+	// return $query;
 }
 add_action('pre_get_posts', 'jmapp_simply_json_custom_query');
 
+
+// this runs before the other query filter, but it is much more sensitive
+function jmapp_simply_json_check_post_type($request)
+{
+	// post categories should be specified on command line with category_name=whatever
+	// however, for backwards compatibility with older apps, we leave this code here
+	if (isset($_REQUEST['category']))
+	{
+		$request['category_name'] = $_REQUEST['category'];
+		$request['post_type'] = 'any';
+	}
+	return $request;
+}
+add_action('request', 'jmapp_simply_json_check_post_type');
 
 /**
  * Wordpress Actions
