@@ -18,6 +18,13 @@ function jmapp_get_providers()
 			'field_help' => ['endpoint' => 'wordpress home page', 'static'=>'Set "static" to "true" when the endpoint returns raw JSON data in wordpress format. All other settings will be disregarded.'],
 			'instructions' => 'The only required argument is "endpoint" and it should be set to the home page of your wordpress site. "post_category" will only pull posts with that category. "post_type" will only pull posts of that type. If "child_post_type" and "child_meta_key" are set, the app will also search for related posts. The child post must have a custom field named according to the "child_meta_key" whose value is the id of the parent post. For example, if you are using my Sermon Publisher plugin, you could set post_type to "sp_series", "child_post_type" to "sp_sermon", and "child_meta_key" to "sermon_series".'
 		],
+		'volunteers' => [
+			'type' => 'volunteers',
+			'tabbable' => true,
+			'display' => 'Volunteer Data',
+			'arguments' => ['endpoint', 'apikey'],
+			'instructions' => 'Both arguments are required. "endpoint" should be set to the home page of your volunteer api, and "apikey" must be set to the apikey for your volunteer installation.'
+		],
 		'gcal' => [
 			'type' => 'gcal',
 			'tabbable' => true,
