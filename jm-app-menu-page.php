@@ -17,7 +17,7 @@ $app_config = jmapp_read_menu_file();
 	.jmapp {font-size:12pt;}
 	.jmapp h3 {font-size:1.6em;margin:0;margin-top:60px;line-height:1;border-bottom:4px solid #111;}
 	.jmapp h4 {font-size:1.4em;margin:0;margin-top:40px;line-height:1;}
-	.jmapp h5 {font-size:1.2em;margin:0;margin-top:20px;line-height:1;}
+	.jmapp h5 {font-size:1.2em;margin:0;line-height:1;}
 	.jmapp img {width:100%;object-fit:cover;}
 	.jmapp-right-panel {width:400px;height:760px;position:fixed;box-sizing:border-box;z-index:9;right:30px;top:40px;}
 	.jmapp-device-preview {background:black;border-radius:10px;width:360px;height:640px;box-sizing:bounding-box;padding:60px 20px 60px;}
@@ -162,6 +162,8 @@ $app_config = jmapp_read_menu_file();
 			<h3>Drawer Sections</h3>
 			<small>Click a section to change settings.</small>
 			<div id="drawer-menu">
+				
+				<!-- DRAWER SECTION -->
 				<div v-for="(section, section_index) in app_config.drawer_menu.sections" class="drawer-menu-section section"
 					:class="{selected:section.selected}">
 					<div class="action_buttons">
@@ -188,6 +190,7 @@ $app_config = jmapp_read_menu_file();
 						Each menu section can have multiple items under it.
 					</div>
 					
+					<!-- SECTION ITEM -->
 					<div v-for="(item, item_index) in section.items" class="drawer-menu-item" v-if="section.selected">
 						<div class="action_buttons">
 							<span class="jmapp_button jmapp_delete_button" @click="removeItem(section, item_index)">
@@ -215,7 +218,8 @@ $app_config = jmapp_read_menu_file();
 								<input type="text" v-model="item.icon">
 								<small>icon may be the textual name of any <a href="https://material.io/tools/icons/?style=baseline">Material Icon</a></small>
 							</div>
-						
+							
+							<!-- PROVIDER -->
 							<h4>{{section.title}} &gt; {{item.title}} • Provider(s)</h4>
 							<small v-if="item.tabs.length > 0 && providers[item.tabs[0].provider].tabbable">This Provider can contain multiple tabs. Additional providers will display as additional tabs.</small>
 							<div v-for="(tab, tab_index) in item.tabs" class="drawer-item-tab section">
@@ -235,7 +239,8 @@ $app_config = jmapp_read_menu_file();
 										<i v-if="!tab.hidden" class="material-icons">expand_less</i>
 									</span>
 								</div>
-								<h5>{{item.title}} Tab #{{tab_index+1}} ({{tab.provider | niceProvider}})</h5>
+								<h5>{{item.title}} &gt; Tab #{{tab_index+1}}<br />
+									{{tab.title}} ({{tab.provider | niceProvider}})</h5>
 								<div class="collapsible clear" :class="{collapsed:tab.hidden}">
 									<div v-if="tab.provider != 'link'" class="input-row">
 										<label for="">Provider Display Title: </label>
@@ -267,7 +272,7 @@ $app_config = jmapp_read_menu_file();
 							</div>
 						
 							<div v-if="item.tabs.length == 0 || providers[item.tabs[0].provider].tabbable">
-								<h4>Add New Provider Tab to {{item.title}}</h4>
+								<h4>Add New Provider Tab to <em>{{item.title}}</em></h4>
 								<div class="input-row">
 									<label for="">Provider Type: </label><br />
 									<select v-model="selected_provider" @change="addProvider(item)">
@@ -280,13 +285,13 @@ $app_config = jmapp_read_menu_file();
 					</div>
 					<div v-if="section.selected">
 						<div class="input-row">
-							<button class="button-primary" @click="addItem(section_index)">Add New Menu Item to {{section.title}}</button>
+							<button class="button-primary" @click="addItem(section_index)">Add New Item to <em>{{section.title}}</em></button>
 						</div>
 					</div>
 				</div>
 				<div>
 					<div class="input-row">
-						<button class="button-primary" @click="addSection()">Add New Menu Section</button>
+						<button class="button-primary" @click="addSection()">Add New Section</button>
 					</div>
 				</div>
 				<!-- <div>
@@ -301,6 +306,8 @@ $app_config = jmapp_read_menu_file();
 			<h3>Home Sections</h3>
 	
 			<div id="home-menu">
+				
+				<!-- HOME ITEM -->
 				<div v-for="(item, item_index) in app_config.home_menu.items" class="home-menu-item"
 					:class="{selected:item.selected}">
 					<div class="action_buttons">
@@ -334,7 +341,9 @@ $app_config = jmapp_read_menu_file();
 						<div v-show="item.image" id="" class="input-row">
 							<img :src="item.image" alt="">
 						</div>
-					
+						
+						
+						<!-- PROVIDER -->
 						<h4>Home Page &gt; {{item.title}} • Provider(s)</h4>
 						<small v-if="item.tabs.length > 0 && providers[item.tabs[0].provider].tabbable">This Provider can contain multiple tabs. Additional providers will display as additional tabs.</small>
 						<div v-for="(tab, tab_index) in item.tabs" class="drawer-item-tab section">
@@ -343,33 +352,46 @@ $app_config = jmapp_read_menu_file();
 									<i class="material-icons">delete</i>
 								</span>
 								<span class="jmapp_button" style="width:20px;">&nbsp;</span>
+								<span class="jmapp_button jmapp_move" @click="moveUp(item.tabs, tab_index)">
+									<i v-if="tab_index > 0"  class="material-icons">arrow_upward</i>
+								</span>
+								<span class="jmapp_button jmapp_move" @click="moveDown(item.tabs, tab_index)">
+									<i v-if="tab_index < item.tabs.length"  class="material-icons">arrow_downward</i>
+								</span>
+								<span class="jmapp_button jmapp_collapse_button" @click="toggleHidden(tab)">
+									<i v-if="tab.hidden"  class="material-icons">expand_more</i>
+									<i v-if="!tab.hidden" class="material-icons">expand_less</i>
+								</span>
 							</div>
-							<h5>{{item.title}} Tab #{{tab_index+1}} ({{tab.provider | niceProvider}})</h5>
-							<div v-show="tab.provider != 'link'" class="input-row">
-								<label for="">Provider Display Title: </label>
-								<input type="text" v-model="tab.title">
-							</div>
+							<h5>{{item.title}} &gt; Tab #{{tab_index+1}}<br />
+								{{tab.title}} ({{tab.provider | niceProvider}})</h5>
+							<div class="collapsible clear" :class="{collapsed:tab.hidden}">
+								<div v-show="tab.provider != 'link'" class="input-row">
+									<label for="">Provider Display Title: </label>
+									<input type="text" v-model="tab.title">
+								</div>
 						
-							<h5>{{tab.provider | niceProvider}} Arguments</h5>
-							<small>{{tab.provider | providerInstructions}}</small>
-							<div v-for="(val, key) in tab.arguments" class="">
-								<div class="input-row">
-									<label for="">{{key}}</label>
-									<select
-										v-if="providers[tab.provider].field_options && providers[tab.provider].field_options[key]"
-										v-model="tab.arguments[key]">
-										<option value="">Please Select One:</option>
-										<option
-											v-for="(optval,optkey) in providers[tab.provider].field_options[key]"
-											:value="optkey">{{optval}}</option>
-									</select>
-									<input v-else type="text" v-model="tab.arguments[key]">
+								<h5>{{tab.provider | niceProvider}} Arguments</h5>
+								<small>{{tab.provider | providerInstructions}}</small>
+								<div v-for="(val, key) in tab.arguments" class="">
+									<div class="input-row">
+										<label for="">{{key}}</label>
+										<select
+											v-if="providers[tab.provider].field_options && providers[tab.provider].field_options[key]"
+											v-model="tab.arguments[key]">
+											<option value="">Please Select One:</option>
+											<option
+												v-for="(optval,optkey) in providers[tab.provider].field_options[key]"
+												:value="optkey">{{optval}}</option>
+										</select>
+										<input v-else type="text" v-model="tab.arguments[key]">
+									</div>
 								</div>
 							</div>
 						</div>
 					
 						<div v-if="item.tabs.length == 0 || providers[item.tabs[0].provider].tabbable">
-							<h4>Add New Provider Tab to {{item.title}}</h4>
+							<h4>Add New Provider Tab to <em>{{item.title}}</em></h4>
 							<div class="input-row">
 								<label for="">Provider Type: </label><br />
 								<select v-model="selected_provider" @change="addProvider(item)">
