@@ -300,7 +300,7 @@ foreach ($options as $key=>$value)
 			<td style="text-align:center;"><?php echo $device['created_at'] ?></td>
 			<td style="text-align:center;"><?php echo $device['platform'] ?></td>
 			<td style="text-align:center;"><?php echo $device['name'] ?></td>
-			<td style="text-align:center;"><?php echo substr($device['device_token'],0,30) ?>...</td>
+			<td style="text-align:center;"><textarea rows=2 style="font-size:8px;width:300px;"><?php echo $device['device_token']?></textarea></td>
 		</tr>
 		
 	<?php endforeach;?>
