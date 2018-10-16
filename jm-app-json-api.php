@@ -249,8 +249,8 @@ function jmapp_simply_json_custom_query($query)
 	if (isset($_REQUEST['json'] ))
 	{
 
-		// posts to retrieve
-		$count = 10;
+		// posts to retrieve by default
+		$count = 20;
 		if (isset($_REQUEST['posts_per_page'])) $count = $_REQUEST['posts_per_page'];
 		if (isset($_REQUEST['count'])) $count = $_REQUEST['count'];
 		$query->set('posts_per_page',$count);
@@ -265,6 +265,19 @@ function jmapp_simply_json_custom_query($query)
 		if (isset($_REQUEST['orderby'])) $query->set('orderby',$_REQUEST['orderby']);
 		if (isset($_REQUEST['order'])) $query->set('order',$_REQUEST['order']);
 		
+		// multiple post ids
+		if (isset($_REQUEST['ids']))
+		{
+			$ids = $_REQUEST['ids'];
+			if (!is_array($ids)) $ids = explode(',', $ids);
+			if (!empty($ids))
+			{
+				$query->set('post_type', 'any');
+				$query->set('post__in', $ids);
+				$query->set('ignore_sticky_posts',True);
+			}
+		}
+		
 		// Wordpress Picks up the 'p' query directly (for individual posts), but we need to
 		// reset the post_type to override any accidental post_type settings above
 		if (isset($_REQUEST['p'])) $query->set('post_type','any');
@@ -276,12 +289,12 @@ function jmapp_simply_json_custom_query($query)
 		if (isset($_REQUEST['meta_query'])) $query->set('meta_query',$_REQUEST['meta_query']);
 		
 		// do debug
-		// if (isset($_REQUEST['debug']))
-		// {
-		// 	print_r($query);
-		// 	print_r($_REQUEST);
-		// 	die();
-		// }
+		if (isset($_REQUEST['debug']))
+		{
+			print_r($query);
+			print_r($_REQUEST);
+			die();
+		}
 	}
 	// not needed... the variable is passed by reference
 	// return $query;

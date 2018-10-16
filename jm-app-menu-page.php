@@ -210,6 +210,12 @@ $app_config = jmapp_read_menu_file();
 							
 						<div class="collapsible clear" :class="{selected:item.selected}" v-if="item.selected">
 							<div class="input-row">
+								<label for="">
+									<input type="checkbox" v-model="item.disabled" />
+									Hide from App
+								</label>
+							</div>
+							<div class="input-row">
 								<label for="">Item Title: </label>
 								<input type="text" v-model="item.title">
 							</div>
@@ -242,6 +248,13 @@ $app_config = jmapp_read_menu_file();
 								<h5>{{item.title}} &gt; Tab #{{tab_index+1}}<br />
 									{{tab.title}} ({{tab.provider | niceProvider}})</h5>
 								<div class="collapsible clear" :class="{collapsed:tab.hidden}">
+									<div class="input-row">
+										<label for="">
+											<input type="checkbox" v-model="tab.disabled" />
+											Hide from App
+										</label>
+									</div>
+
 									<div v-if="tab.provider != 'link'" class="input-row">
 										<label for="">Provider Display Title: </label>
 										<input type="text" v-model="tab.title">
@@ -249,7 +262,7 @@ $app_config = jmapp_read_menu_file();
 									
 									<!-- PROVIDER SETTINGS -->
 									<h5>{{tab.provider | niceProvider}} Arguments</h5>
-									<small>{{tab.provider | providerInstructions}}</small>
+									<small v-html="providers[tab.provider].instructions"></small>
 									<div v-for="(val, key) in tab.arguments" class="">
 										<div class="input-row">
 											<label for="">{{key}}</label>
@@ -329,6 +342,13 @@ $app_config = jmapp_read_menu_file();
 					
 					<div v-if="item.selected">
 						<div class="input-row">
+							<label for="">
+								<input type="checkbox" v-model="item.disabled" />
+								Hide from App
+							</label>
+						</div>
+						
+						<div class="input-row">
 							<label for="">Item Title: </label>
 							<input type="text" v-model="item.title">
 						</div>
@@ -366,13 +386,20 @@ $app_config = jmapp_read_menu_file();
 							<h5>{{item.title}} &gt; Tab #{{tab_index+1}}<br />
 								{{tab.title}} ({{tab.provider | niceProvider}})</h5>
 							<div class="collapsible clear" :class="{collapsed:tab.hidden}">
+								<div class="input-row">
+									<label for="">
+										<input type="checkbox" v-model="tab.disabled" />
+										Hide from App
+									</label>
+								</div>
+
 								<div v-show="tab.provider != 'link'" class="input-row">
 									<label for="">Provider Display Title: </label>
 									<input type="text" v-model="tab.title">
 								</div>
 						
 								<h5>{{tab.provider | niceProvider}} Arguments</h5>
-								<small>{{tab.provider | providerInstructions}}</small>
+								<small v-html="providers[tab.provider].instructions"></small>
 								<div v-for="(val, key) in tab.arguments" class="">
 									<div class="input-row">
 										<label for="">{{key}}</label>

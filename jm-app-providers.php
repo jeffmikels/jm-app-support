@@ -13,10 +13,12 @@ function jmapp_get_providers()
 			'type' => 'wordpress',
 			'tabbable' => true,
 			'display' => 'Wordpress Data',
-			'arguments' => ['endpoint','static','post_category','post_type','child_post_type', 'child_meta_key'],
-			'field_options' => ['static'=>['true'=>'True', 'false'=>'False']],
+			'arguments' => ['endpoint','static','post_category','post_type','related_posts_key','child_post_type','child_meta_key'],
+			'field_options' => [
+				'static'=>['true'=>'True', 'false'=>'False'],
+			],
 			'field_help' => ['endpoint' => 'wordpress home page', 'static'=>'Set "static" to "true" when the endpoint returns raw JSON data in wordpress format. All other settings will be disregarded.'],
-			'instructions' => 'The only required argument is "endpoint" and it should be set to the home page of your wordpress site. "post_category" will only pull posts with that category. "post_type" will only pull posts of that type. If "child_post_type" and "child_meta_key" are set, the app will also search for related posts. The child post must have a custom field named according to the "child_meta_key" whose value is the id of the parent post. For example, if you are using my Sermon Publisher plugin, you could set post_type to "sp_series", "child_post_type" to "sp_sermon", and "child_meta_key" to "sermon_series".'
+			'instructions' => '<ul><li>The only required argument is "endpoint" and it should be set to the home page of your wordpress site.<li>If set, "post_category" will only pull posts with that category.<li>If set, "post_type" will only pull posts of that post type.<li>If both "child_post_type" and "child_meta_key" are set, the app will also search for all posts of child_post_type where a custom field identified by child_meta_key contains the id of the parent post. For example, if you are using my Sermon Publisher plugin, you should set post_type to "sp_series", "child_post_type" to "sp_sermon", and "child_meta_key" to "sermon_series".<li>Finally, if "related_posts_key" is set, the app will process the data in that custom field as if it is a list of posts or post ids. For example, the Sermon Publisher Plugin uses the field "series_group_data" to store related post data for Series Groups.</ul>'
 		],
 		'volunteers' => [
 			'type' => 'volunteers',
