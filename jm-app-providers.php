@@ -1,7 +1,7 @@
 <?php
 function jmapp_get_providers()
 {
-	return [
+	$providers = [
 		'home' => [
 			'type' => 'home',
 			'tabbable' => false,
@@ -79,4 +79,21 @@ function jmapp_get_providers()
 			'instructions' => '"Type" can be "uploads", "live", "playlists", or "playlist". The "id" should be the channel id in each case except the last case where the id should be just the playlist id.'
 		]
 	];
+	
+	// is the sermon publisher plugin installed?
+	if (defined('SP_EXISTS'))
+	{
+		$providers['sermons'] = [
+			'type' => 'sermons',
+			'tabbable' => true,
+			'display' => 'Sermon Publisher Sermons',
+			'arguments' => ['type','endpoint'],
+			'field_options' => ['type' => ['series'=>'Sermons by Series','series_group'=>'Series Groups']],
+			'defaults' => ['endpoint'=>get_home_url() . '/', 'type'=>'series'],
+			'field_help' => ['type' => 'Sermons by Series will show all sermon series in the app. Series Groups will show all the series groups in the app.'],
+			'instructions' => 'This provider expects that you have not changed anything in the sermon publisher plugin. It is the only way to display "series_group" content in the app. However, you can get sermon_series content in the app using the regular wordpress provider.'
+		];
+	}
+	
+	return $providers;
 }

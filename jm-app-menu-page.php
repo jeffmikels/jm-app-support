@@ -589,7 +589,10 @@ $app_config = jmapp_read_menu_file();
 				var provider_arguments = {}
 				for (var i=0;i<this.providers[provider_name].arguments.length;i++) {
 					var key = this.providers[provider_name].arguments[i]
-					provider_arguments[key] = '';
+					var defaultValue = '';
+					if (this.providers[provider_name].defaults)
+						defaultValue = this.providers[provider_name].defaults[key] ? this.providers[provider_name].defaults[key] : '';
+					provider_arguments[key] = defaultValue;
 				}
 				
 				if (!item.tabs) Vue.set(item, 'tabs', []);

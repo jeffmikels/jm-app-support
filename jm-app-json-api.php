@@ -172,8 +172,8 @@ function jmapp_simply_json($wp) {
 					$output['posts'][$i]['meta'] = get_post_custom();
 
 					// check for a 'meta' item named poster in case there is no other image set
-					if (empty($output['posts'][$i]['image']) && ! empty($output['posts'][$i]['meta']['poster']))
-						$output['posts'][$i]['image'] = array($output['posts'][$i]['meta']['poster'][0]);
+					// if (empty($output['posts'][$i]['image']) && ! empty($output['posts'][$i]['meta']['poster']))
+					// 	$output['posts'][$i]['image'] = array($output['posts'][$i]['meta']['poster'][0]);
 
 					// output the categories
 					foreach(get_the_category() as $cat) {
