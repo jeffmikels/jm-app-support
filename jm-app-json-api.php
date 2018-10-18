@@ -248,6 +248,14 @@ function jmapp_simply_json_custom_query($query)
 	
 	if (isset($_REQUEST['json'] ))
 	{
+		// eliminate password protected posts
+		$query->set('has_password', FALSE);
+		
+		// this is the default, but if a user is logged in
+		// private posts will be included as well
+		// setting it manually here makes private posts never show up
+		// $query->set('post_status', 'publish');
+		
 
 		// posts to retrieve by default
 		$count = 20;
