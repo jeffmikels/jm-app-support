@@ -54,9 +54,9 @@ function jmapp_publish_post($new_status, $old_status, $post)
 	// get the options
 	$stored_options = get_option('jmapp_options',array());
 	
-	if (empty($stored_options['onesignal_app_id']) || empty($stored_options['onesignal_rest_key']))
-	{   
-		jmapp_err('OneSignal app is active but not set up. No notifications were sent.');
+	if (empty($stored_options['fcm_server_key']))
+	{
+		jmapp_err('Notifications have not been set up. No notifications were sent.');
 		return;
 	}
 	
@@ -85,8 +85,8 @@ function jmapp_publish_post($new_status, $old_status, $post)
 					]
 				]
 			];
-			jmapp_msg('Push notifications were sent.');
-			jmapp_send_notification($notification);
+			$result = jmapp_send_notification($notification);
+			jmapp_msg('Push notifications were sent. <div class="debug" style="display:none">' . $result .'</div>');
 			return;
 		}
 	}
