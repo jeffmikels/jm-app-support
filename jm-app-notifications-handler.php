@@ -11,14 +11,14 @@ function jmapp_ajax_notify()
 add_action( 'admin_post_jmapp_maybe_notify', 'jmapp_maybe_notify', 99 );
 function jmapp_maybe_notify() {
 	// generate notification
-	$title = $_POST['jmapp_now_title'];
-	$subtitle = $_POST['jmapp_now_subtitle'];
-	$message = $_POST['jmapp_now_message'];
-	$url = $_POST['jmapp_now_url'];
-	$custom = $_POST['jmapp_now_custom'];
-	$id = $_POST['jmapp_now_id'];
-	$testing = $_POST['jmapp_now_test'];
-	$ready = $_POST['jmapp_now_ready'];
+	$title    = stripslashes($_POST['jmapp_now_title']);
+	$subtitle = stripslashes($_POST['jmapp_now_subtitle']);
+	$message  = stripslashes($_POST['jmapp_now_message']);
+	$url      = stripslashes($_POST['jmapp_now_url']);
+	$custom   = stripslashes($_POST['jmapp_now_custom']);
+	$id       = stripslashes($_POST['jmapp_now_id']);
+	$testing  = stripslashes($_POST['jmapp_now_test']);
+	$ready    = stripslashes($_POST['jmapp_now_ready']);
 	$notification = [
 		'title' => $title,
 		'subtitle' => $subtitle,
