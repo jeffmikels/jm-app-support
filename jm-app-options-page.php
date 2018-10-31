@@ -30,7 +30,7 @@ $options = Array(
 		'type'=>'text',
 		'label'=>'Firebase Cloud Messaging "topic" for apps associated with this site.',
 		'value'=>'',
-		'description'=>'Will send test messages only to apps that have "subscribed" to this site. NOTE: All Jeff Mikels\'s apps that use FCM for notifications will by default subscribe the device to a topic identified by the app\'s bundle id (i.e. org.jeffmikels.bradylane)',
+		'description'=>'Will send test messages only to apps that have "subscribed" to this site. NOTE: All Jeff Mikels\'s apps that use FCM for notifications will by default subscribe the device to a topic identified by the app\'s bundle id (i.e. org.jeffmikels.bradylane). Separate multiple topics with a comma.',
 		'admin_only' => 0
 	),
 

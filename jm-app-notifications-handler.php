@@ -164,8 +164,17 @@ function jmapp_send_notification($n)
 		$fcm_fields['data'] = ['json' => json_encode($n['data'])];
 	}
 	
-	if (!empty($stored_options['fcm_app_topic']))
-		$fcm_fields['condition'] = "'" . $stored_options['fcm_app_topic'] . "' in topics";
+	if (!empty($stored_options['fcm_app_topic'])) {
+		$topics = explode(',', $stored_options['fcm_app_topic']);
+		$condition = [];
+		foreach ($topics as $topic)
+		{
+			$topic = trim($topic);
+			$condition[] = "'$topic' in topics";
+		}
+		$condition_string = implode(' || ', $condition);
+		$fcm_fields['condition'] = $condition_string;
+	}
 	
 	
 	// This next line groups notifications together on android
