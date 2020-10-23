@@ -4,6 +4,20 @@ The old system used onesignal for push notifications.
 This new system uses FCM (Firebase Cloud Messaging) directly.
 */
 $options = Array(
+	'google_services_api_key'=>Array(
+		'type'=>'text',
+		'label'=>'Google Services (Maps) Server Key',
+		'value'=>'',
+		'description'=>'For the app to use Google Maps, you need an API key.',
+		'admin_only' => 0
+	),
+	'google_services_json_file'=>Array(
+		'type'=>'text',
+		'label'=>'Absolute server path to Google Services JSON file',
+		'value'=>'',
+		'description'=>'used to generate Firebase compatible JWT tokens.',
+		'admin_only' => 0
+	),
 	'fcm_server_key'=>Array(
 		'type'=>'text',
 		'label'=>'Firebase Cloud Messaging Server Key',
@@ -33,30 +47,6 @@ $options = Array(
 		'description'=>'Will send test messages only to apps that have "subscribed" to this site. NOTE: All Jeff Mikels\'s apps that use FCM for notifications will by default subscribe the device to a topic identified by the app\'s bundle id (i.e. org.jeffmikels.bradylane). Separate multiple topics with a comma.',
 		'admin_only' => 0
 	),
-
-	// 'onesignal_app_id'=>Array(
-	// 	'type'=>'text',
-	// 	'label'=>'OneSignal App ID',
-	// 	'value'=>'',
-	// 	'description'=>'',
-	// 	'admin_only' => 0
-	// ),
-	// 'onesignal_rest_key'=>Array(
-	// 	'type'=>'text',
-	// 	'label'=>'OneSignal REST Key',
-	// 	'value'=>'',
-	// 	'description'=>'',
-	// 	'admin_only' => 0
-	// ),
-	// 'onesignal_is_live'=>Array(
-	// 	'type'=>'checkbox',
-	// 	'label'=>'Send notifications for real to all devices.',
-	// 	'checkvalue'=>1,
-	// 	'value'=>1,
-	// 	'description'=>'Unless this is checked, all notifications will go to devices in the "Test Devices" segment only.',
-	// 	'admin_only' => 0
-	// ),
-	// 
 	'auto_send_post_types'=>Array(
 		'type'=>'text',
 		'label'=>'Automatically send notifications on these post types.',
@@ -70,48 +60,7 @@ $options = Array(
 		'value'=>'ic_stat_onesignal_default',
 		'description'=>'Enter the name of a drawable resource available in your app. (e.g. ic_stat_notify)',
 		'admin_only' => 0
-	),
-	/*
-	'ios'=>Array(
-		'type'=>'checkbox',
-		'checkvalue'=>1,
-		'label'=>'Push to iOS Devices',
-		'value'=>0,
-		'description'=>'Apple iOS must be set up as a platform in your OneSignal account for this to work.',
-		'admin_only' => 0
-	),
-	'android'=>Array(
-		'type'=>'checkbox',
-		'checkvalue'=>1,
-		'label'=>'Push to Android Devices',
-		'value'=>0,
-		'description'=>'Android must be set up as a platform in your OneSignal account for this to work.',
-		'admin_only' => 0
-	),
-	'win8'=>Array(
-		'type'=>'checkbox',
-		'checkvalue'=>1,
-		'label'=>'Push to Windows Phone 8.0 Devices',
-		'value'=>0,
-		'description'=>'Windows Phone 8.0 must be set up as a platform in your OneSignal account for this to work.',
-		'admin_only' => 0
-	),
-	'win81'=>Array(
-		'type'=>'checkbox',
-		'checkvalue'=>1,
-		'label'=>'Push to Windows Phone 8.1 Devices',
-		'value'=>0,
-		'description'=>'Windows Phone 8.1 must be set up as a platform in your OneSignal account for this to work.',
-		'admin_only' => 0
-	),
-	'fire'=>Array(
-		'type'=>'checkbox',
-		'checkvalue'=>1,
-		'label'=>'Push to Amazon Fire Devices',
-		'value'=>0,
-		'description'=>'Amazon Fire must be set up as a platform in your OneSignal account for this to work.',
-		'admin_only' => 0
-	),*/
+	)
 );
 
 
@@ -132,7 +81,7 @@ foreach ($options as $key=>$value)
 		<table class="form-table">
 			<?php foreach ($options as $key=>$value): ?>
 
-				<?php if (($value['admin_only'] == 1) && (! current_user_can('jmapp_admin'))) continue; ?>
+				<?php if (($value['admin_only'] == 1) && (! current_user_can(JMAPP_ADMIN_CAP))) continue; ?>
 
 				<tr valign="top">
 					<th scope="row"><?php echo $value['label']; ?><?php if ($value['admin_only'] == 1):?><br />ADMIN ONLY<?php endif; ?></th>

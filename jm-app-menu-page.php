@@ -78,7 +78,7 @@ $app_config = jmapp_read_menu_file();
 	
 	<h2>Jeff Mikels' App Menu Generator</h2>
 	<p>Set up your mobile app using this easy menu generator.</p>
-	<p>Your config file will be saved to <a href="<?php echo site_url(jmapp_MENU_FILE); ?>"><?php echo site_url(jmapp_MENU_FILE); ?></a></p>
+	<p>Your config file will be saved to <a href="<?php echo site_url(JMAPP_MENU_FILE); ?>"><?php echo site_url(JMAPP_MENU_FILE); ?></a></p>
 	<p>Click an item in the app preview or a heading below to show the relevant options.</p>
 	
 	<div id="jmapp-app">
@@ -211,8 +211,12 @@ $app_config = jmapp_read_menu_file();
 						<div class="collapsible clear" :class="{selected:item.selected}" v-if="item.selected">
 							<div class="input-row">
 								<label for="">
+									<input type="checkbox" v-model="item.disabled_on_apple" />
+									Hide from Apple
+								</label>
+								<label for="">
 									<input type="checkbox" v-model="item.disabled" />
-									Hide from App
+									Hide from Both
 								</label>
 							</div>
 							<div class="input-row">
@@ -250,13 +254,17 @@ $app_config = jmapp_read_menu_file();
 								<div class="collapsible clear" :class="{collapsed:tab.hidden}">
 									<div class="input-row">
 										<label for="">
+											<input type="checkbox" v-model="tab.disabled_on_apple" />
+											Hide from Apple
+										</label>
+										<label for="">
 											<input type="checkbox" v-model="tab.disabled" />
-											Hide from App
+											Hide from Both
 										</label>
 									</div>
 
 									<div v-if="tab.provider != 'link'" class="input-row">
-										<label for="">Provider Display Title: </label>
+										<label for="">Provider Display Title: (if left empty, the app logo will be displayed)</label>
 										<input type="text" v-model="tab.title">
 									</div>
 									
@@ -343,8 +351,12 @@ $app_config = jmapp_read_menu_file();
 					<div v-if="item.selected">
 						<div class="input-row">
 							<label for="">
+								<input type="checkbox" v-model="item.disabled_on_apple" />
+								Hide from Apple
+							</label>
+							<label for="">
 								<input type="checkbox" v-model="item.disabled" />
-								Hide from App
+								Hide from Both
 							</label>
 						</div>
 						
@@ -388,13 +400,17 @@ $app_config = jmapp_read_menu_file();
 							<div class="collapsible clear" :class="{collapsed:tab.hidden}">
 								<div class="input-row">
 									<label for="">
+										<input type="checkbox" v-model="tab.disabled_on_apple" />
+										Hide from Apple
+									</label>
+									<label for="">
 										<input type="checkbox" v-model="tab.disabled" />
-										Hide from App
+										Hide from Both
 									</label>
 								</div>
 
 								<div v-show="tab.provider != 'link'" class="input-row">
-									<label for="">Provider Display Title: </label>
+									<label for="">Provider Display Title: (if left empty, the app logo will be displayed)</label>
 									<input type="text" v-model="tab.title">
 								</div>
 						

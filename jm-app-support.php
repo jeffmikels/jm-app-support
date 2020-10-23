@@ -7,18 +7,18 @@
  * registers the activation and deactivation functions, and defines a function
  * that starts the plugin.
  *
- * @link              http://jeffmikels.org
- * @since             0.1.0
- * @package           jm_app_support
+ * @link			  http://jeffmikels.org
+ * @since			 0.1.0
+ * @package		   jm_app_support
  *
  * @wordpress-plugin
- * Plugin Name:       Jeff Mikels App Support
- * Plugin URI:        http://jeffmikels.info
- * Description:       This plugin generates menu and configuration information for the Jeff Mikels Mobile App.
- * Version:           0.1.0
- * Author:            Jeff Mikels
- * Author URI:        http://jeffmikels.org/
- * Text Domain:       jm-app-menu-generator
+ * Plugin Name:	   Jeff Mikels App Support
+ * Plugin URI:		http://jeffmikels.info
+ * Description:	   This plugin generates menu and configuration information for the Jeff Mikels Mobile App. ---- requires JWT Authentication Plugin.
+ * Version:		   0.1.0
+ * Author:			Jeff Mikels
+ * Author URI:		http://jeffmikels.org/
+ * Text Domain:	   jm-app-menu-generator
  */
 
 // If this file is called directly, abort.
@@ -32,11 +32,33 @@ if ( ! defined( 'WPINC' ) ) {
 define( 'jmapp_VERSION', '0.1.0' );
 
 // plugin constants
-define( 'jmapp_MENU_FILE', 'jm_app.json');
-define( 'JMAPP_MENU_PATH', ABSPATH . '/' . jmapp_MENU_FILE);
+define('JMAPP_MENU_FILE' , 'jm_app_v2.json');
+define('JMAPP_MENU_PATH' , ABSPATH . '/' . JMAPP_MENU_FILE);
+define('JMAPP_USER_ROLE' , 'jmapp_appuser');
+define('JMAPP_PW_CAP'    , 'edit_prayer_walks');
+define('JMAPP_ADMIN_ROLE', 'jmapp_admin');
+define('JMAPP_ADMIN_CAP' , 'jmapp_admin');
+
 
 include "jm-app-functions.php";
+include "jm-app-post-meta.php";
+include "jm-app-admin-hooks.php";
+include "jm-app-user-meta.php";
+include "jm-app-custom-types.php";
+include "jm-app-prayer-walks.php";
+include "jm-app-notifications-handler.php";
 include "jm-app-providers.php";
+include "jm-app-game-scores.php";
+include "jm-app-jwt-hooks.php";
+include "jm-app-json-api.php";
+
+/* THESE FILES OUTPUT HTML AND ARE INCLUDED INLINE WHEN CALLED FOR
+not_included_here "jm-app-menu-page.php";
+not_included_here "jm-app-options-page.php";
+*/
+
+// DEPRECATED
+// include "jm-app-onesignal-handler.php";
 
 
 // WORDPRESS ACTIVATION / DEACTIVATION
@@ -44,90 +66,43 @@ register_activation_hook(__FILE__, 'jmapp_install');
 register_deactivation_hook(__FILE__, 'jmapp_uninstall');
 function jmapp_install()
 {
-	$role = get_role( 'administrator' );
-	$role->add_cap('jmapp_admin');
-	remove_role('jmapp_admin');
+	global $wp_roles;
+
+	// make sure users can't administer posts
+	// we allow file uploads so they can submit profile photos (eventually)
+	add_role(JMAPP_USER_ROLE, 'JM Apps User', [
+		'read' => true,                // access the dashboard
+		// 'edit_posts' => false,
+		// 'delete_posts' => false,
+		// 'publish_posts' => false,
+		'upload_files' => true,
+	]);
+	add_role(JMAPP_ADMIN_ROLE, 'JM Apps Admin', [JMAPP_ADMIN_CAP => true]);
+	
+	$wp_roles->add_cap('administrator', JMAPP_ADMIN_CAP);
+	$wp_roles->add_cap('administrator', JMAPP_PW_CAP);
+	
+	// add roles to existing users
+	$users = get_users();
+	foreach ($users as $user) {
+		$user->add_role(JMAPP_USER_ROLE);
+	}
+
+	jmapp_add_prayer_walk_capabilities();
 }
 
 function jmapp_uninstall()
 {
-	$role = get_role( 'administrator' );
-	$role->remove_cap('jmapp_admin');
-	remove_role('jmapp_admin');
+	global $wp_roles;
+	
+	$wp_roles->remove_cap('administrator', JMAPP_ADMIN_CAP);
+	$wp_roles->remove_cap('administrator', JMAPP_PW_CAP);
+	
+	jmapp_add_prayer_walk_capabilities(FALSE);
+	
+	remove_role(JMAPP_ADMIN_ROLE);
+	remove_role(JMAPP_USER_ROLE);
 }
 
 
-/* Administration Pages */
-if ( is_admin() ) {
-	add_action ('admin_menu', 'jmapp_admin_menu');
-	add_action ('admin_init', 'jmapp_register_options');
-	wp_enqueue_style('material-icons','https://fonts.googleapis.com/icon?family=Material+Icons');
-}
-function jmapp_admin_menu()
-{
-	add_menu_page('My Mobile App', 'Mobile App Settings', 'manage_options', 'jmapp-options', 'jmapp_options_page');
-	add_submenu_page('jmapp-options', 'Menu Maker', 'Mobile App Menu Maker', 'manage_options', 'jmapp-menu', 'jmapp_menu_page');
-}
 
-function jmapp_register_options()
-{
-	register_setting('jmapp_options','jmapp_options'); // one group to store all options as an array
-}
-
-function jmapp_menu_page()
-{
-	if ( !current_user_can('manage_options') ) wp_die( __('You do not have sufficient permissions to access this page.' ) );
-	include "jm-app-menu-page.php";
-}
-
-function jmapp_options_page()
-{
-	if ( !current_user_can('manage_options') ) wp_die( __('You do not have sufficient permissions to access this page.' ) );
-	include "jm-app-options-page.php";
-}
-
-add_action('wp_ajax_jmapp_get_menu', 'jmapp_ajax_get_menu');
-function jmapp_ajax_get_menu()
-{
-	jmapp_ajax('read');
-}
-
-add_action('wp_ajax_jmapp_save_menu', 'jmapp_ajax_save_menu');
-function jmapp_ajax_save_menu()
-{
-	// print_r($_POST['menu_data']);
-	$menu_data = json_decode(stripslashes($_POST['menu_data']), TRUE);
-	jmapp_ajax('write', $menu_data);
-}
-
-add_action( 'admin_notices', 'jmapp_notices' );
-function jmapp_notices()
-{
-	if (array_key_exists('jmapp_err', $_GET))
-	{
-		
-		?>
-
-	    <div class="notice notice-error is-dismissible">
-	        <p><?php echo $_GET['jmapp_err'];?></p>
-	    </div>
-
-		<?php
-	}
-
-	if (array_key_exists('jmapp_msg', $_GET))
-	{
-		
-		?>
-
-	    <div class="notice notice-success is-dismissible">
-	        <p><?php echo $_GET['jmapp_msg'];?></p>
-	    </div>
-
-		<?php
-	}
-}
-
-include "jm-app-json-api.php";
-// include "jm-app-onesignal-handler.php";
-include "jm-app-notifications-handler.php";

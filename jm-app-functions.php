@@ -1,5 +1,13 @@
 <?php
 
+function jmapp_get(&$var, $default=null)
+{
+	// https://stackoverflow.com/questions/6696425/is-there-a-better-php-way-for-getting-default-value-by-key-from-array-dictionar
+	// if we could guarantee people were using php 7, we could do this:
+	// return $var ?? $default;
+	return isset($var) ? $var : $default;
+}
+
 function jmapp_err($s)
 {
 	add_filter('redirect_post_location', function($location) use ($s) {

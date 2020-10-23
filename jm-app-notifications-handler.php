@@ -22,13 +22,18 @@ function jmapp_maybe_notify() {
 	$notification = [
 		'title' => $title,
 		'subtitle' => $subtitle,
-		'message' => $message,
+		'body' => $message,
 		'testing' => $testing,
 	];
 	if (!empty($id)) {
+		$imageUrl = get_the_post_thumbnail_url($id);
+		$imageUrl = ($imageUrl) ? $imageUrl : '';
 		$post = get_post($id);
-		$notification['big_picture'] = get_the_post_thumbnail_url($id);
+		$notification['big_picture'] = $imageUrl;
+		$notification['image'] = $imageUrl;
 		$notification['data'] = [
+			'image' => $imageUrl,
+			'postId' => $id,
 			'providerData' => [
 				'title' => $post->post_title,
 				'provider' => 'wordpress',
@@ -66,15 +71,23 @@ function jmapp_publish_post($new_status, $old_status, $post)
 		
 		if (trim($post_type) == $post->post_type)
 		{
+			$imageUrl = get_the_post_thumbnail_url($post);
+			$imageUrl = ($imageUrl) ? $imageUrl : '';
+			
 			// generate notification
 			$notification = [
 				'title' => 'New Content Published!',
 				'subtitle' => '',
-				'message' => $post->post_title,
-				'big_picture' => get_the_post_thumbnail_url($post),
+				'body' => $post->post_title,
+				'big_picture' => $imageUrl,
+				'image' => $imageUrl,
 				'url' => get_post_permalink($post->ID),
 				'data' => [
+					'postId' => $post->ID,
+					'title' => 'New Content Published',
+					'body' => $post->post_title,
 					'targetUrl' => get_post_permalink($post->ID),
+					'image' => $imageUrl,
 					'providerData' => [
 						'title' => $post->post_title,
 						'provider' => 'wordpress',
@@ -95,6 +108,10 @@ function jmapp_publish_post($new_status, $old_status, $post)
 // PLUGIN FUNCTIONS
 function jmapp_send_notification($n)
 {
+	if (!is_array($n['data'])) $n['data'] = [];
+	$notificationId = jmapp_save_notification($n);
+	$n['data']['notificationId'] = $notificationId;
+	
 	// this plugin used to use onesignal for notifications
 	// we are now using Firebase Cloud Messaging directly
 	
@@ -149,20 +166,25 @@ function jmapp_send_notification($n)
 	$fcm_fields = [
 		'priority'     => 'normal',
 		'time_to_live' => 60*60*24*7,
+		'data'         => [],
 		'notification' => [
 			'title'    => $n['title'],
 			'subtitle' => $n['subtitle'],
-			'body'     => $n['message'],
+			'body'     => $n['body'],
 			'icon'     => empty($stored_options['android_icon']) ? 'ic_stat_notify' : $stored_options['android_icon'],
 			'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
 			'sound'        => 'default',
 		],
 	];
 	
+	// make sure the 'data' contains title and body too
 	if (!empty($n['data']))
 	{
-		$fcm_fields['data'] = ['json' => json_encode($n['data'])];
+		$fcm_fields['data'] = $n['data'];
 	}
+	
+	// also include all of fcm data in a json encoded field for backward compatibility
+	$fcm_fields['data']['json'] = json_encode($fcm_fields['data']);
 	
 	if (!empty($stored_options['fcm_app_topic'])) {
 		$topics = explode(',', $stored_options['fcm_app_topic']);
@@ -180,7 +202,7 @@ function jmapp_send_notification($n)
 	// This next line groups notifications together on android
 	// it isn't useful unless you have a feature in the app to show
 	// recent notifications
-	// $fields['android_group'] = site_url(),
+	$fcm_fields['android_group'] = site_url();
 	
 	if ($test_only)
 	{
@@ -199,12 +221,8 @@ function jmapp_send_notification($n)
 		}
 	}
 	
-	// big_picture notification images
-	// not sure how this works on fcm messaging
-	// default fcm doesn't support big picture
-	// instead, the app must receive a data message and then create
-	// its own notification using onMessageReceived.
-	// if (!empty($n['big_picture'])) $fields['big_picture'] = $n['big_picture'];
+	// add fcm data to the notification post
+	add_post_meta($notificationId, 'fcm_data', $fcm_fields, TRUE);
 	
 	$fcm_fields = json_encode($fcm_fields);
 	
@@ -216,74 +234,6 @@ function jmapp_send_notification($n)
 	curl_setopt($ch, CURLOPT_HEADER, FALSE);
 	curl_setopt($ch, CURLOPT_POST, TRUE);
 	curl_setopt($ch, CURLOPT_POSTFIELDS, $fcm_fields);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-
-	$response = curl_exec($ch);
-	curl_close($ch);
-	
-	return $response;
-}
-
-// old code for onesignal notifications
-function jmapp_send_onesignal($n)
-{
-	// get the options
-	$stored_options = get_option('jmapp_options',array());
-	$test_only = TRUE;
-	if (!empty($stored_options['onesignal_is_live']) && $stored_options['onesignal_is_live'] == 1) $test_only = FALSE;
-	if (!empty($n['testing']) && $n['testing'] == 'true') $test_only = TRUE;
-	
-	// onesignal api url
-	$os_url = 'https://onesignal.com/api/v1/notifications';
-	
-	$fields = array(
-		'app_id' => $stored_options['onesignal_app_id'],
-		'included_segments' => array('Test Devices'),
-		'contents' => ['en' => $n['message']],
-		'headings' => ['en' => $n['title']],
-		'subtitle' => ['en' => $n['subtitle']],
-	);
-	
-	// if 'url' is set, the device will launch
-	// that url in a web browser when notification
-	// is opened, but preferably, we want the app
-	// to handle data inside the app if possible
-	if (!empty($n['data']))
-	{
-		$fields['data'] = $n['data'];
-	}
-	elseif (!empty($n['url']))
-	{
-		$fields['url'] = $n['url'];
-	}
-	
-	// This next line groups notifications together on android
-	// it isn't useful unless you have a feature in the app to show
-	// recent notifications
-	// $fields['android_group'] = site_url(),
-	
-	if (! $test_only)
-		$fields['included_segments'] = array('All');
-		
-	
-	// check for big_picture
-	if (!empty($n['big_picture'])) $fields['big_picture'] = $n['big_picture'];
-	
-	// specify the icon resource
-	if (!empty($stored_options['android_icon']))
-		$fields['small_icon'] = $stored_options['android_icon'];
-	
-	
-	$fields = json_encode($fields);
-	
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, "https://onesignal.com/api/v1/notifications");
-	curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8',
-											   'Authorization: Basic ' . $stored_options['onesignal_rest_key']));
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-	curl_setopt($ch, CURLOPT_HEADER, FALSE);
-	curl_setopt($ch, CURLOPT_POST, TRUE);
-	curl_setopt($ch, CURLOPT_POSTFIELDS, $fields);
 	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
 
 	$response = curl_exec($ch);
