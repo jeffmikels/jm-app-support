@@ -12,6 +12,7 @@ function jmapp_admin_menu()
 {
 	add_menu_page('My Mobile App', 'Mobile App Settings', 'manage_options', 'jmapp-options', 'jmapp_options_page');
 	add_submenu_page('jmapp-options', 'Menu Maker', 'Mobile App Menu Maker', 'manage_options', 'jmapp-menu', 'jmapp_menu_page');
+	add_submenu_page('jmapp-options', 'Send Notification', 'Send Notification', 'manage_options', 'jmapp-notification', 'jmapp_notification_page');
 }
 
 function jmapp_register_options()
@@ -29,6 +30,12 @@ function jmapp_options_page()
 {
 	if ( !current_user_can('manage_options') ) wp_die( __('You do not have sufficient permissions to access this page.' ) );
 	include "jm-app-options-page.php";
+}
+
+function jmapp_notification_page()
+{
+	if ( !current_user_can('manage_options') ) wp_die( __('You do not have sufficient permissions to access this page.' ) );
+	include "jm-app-notifications-page.php";
 }
 
 

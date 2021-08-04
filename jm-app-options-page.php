@@ -1,8 +1,4 @@
 <?php
-/*
-The old system used onesignal for push notifications.
-This new system uses FCM (Firebase Cloud Messaging) directly.
-*/
 $options = Array(
 	'google_services_api_key'=>Array(
 		'type'=>'text',
@@ -25,14 +21,6 @@ $options = Array(
 		'description'=>'<a href="https://console.firebase.google.com">Firebase Console</a>. Choose Project &gt; Project Settings &gt; Cloud Messaging',
 		'admin_only' => 0
 	),
-	'fcm_is_live'=>Array(
-		'type'=>'checkbox',
-		'label'=>'Send notifications for real to all devices.',
-		'checkvalue'=>1,
-		'value'=>1,
-		'description'=>'Unless this is checked, all notifications will go to devices in the "test" group only.',
-		'admin_only' => 0
-	),
 	'fcm_test_devices'=>Array(
 		'type'=>'text',
 		'label'=>'Firebase Cloud Messaging Test Device Token',
@@ -42,25 +30,40 @@ $options = Array(
 	),
 	'fcm_app_topic'=>Array(
 		'type'=>'text',
-		'label'=>'Firebase Cloud Messaging "topic" for apps associated with this site.',
+		'label'=>'Firebase Cloud Messaging main "topic" for apps associated with this site.',
+		'value'=>preg_replace('#https?://#', '', home_url()),
+		'description'=>'Users of your app can subscribe to notifications according to topic. The value here must be unique to this website, and therefore, it probably should be the bundle id of your app or the full url of this website.',
+		'admin_only' => 0
+	),
+	'app_subsites'=>Array(
+		'type'=>'text',
+		'label'=>'Sub-sites to tell the app about.',
 		'value'=>'',
-		'description'=>'Will send test messages only to apps that have "subscribed" to this site. NOTE: All Jeff Mikels\'s apps that use FCM for notifications will by default subscribe the device to a topic identified by the app\'s bundle id (i.e. org.jeffmikels.bradylane). Separate multiple topics with a comma.',
+		'description'=>'If you run multiple WordPress sites with this plugin installed, one site must be the "master" site with the apps menu data, but you can let your users subscribe to notifications from the subsites by adding their URLs here separated by commas. Note: The values here must exactly match the "WordPress Address" of the other sites as specified on their "General Settings" page.',
 		'admin_only' => 0
 	),
 	'auto_send_post_types'=>Array(
 		'type'=>'text',
 		'label'=>'Automatically send notifications on these post types.',
-		'value'=>'post',
-		'description'=>'A push notification will be sent whenever one of these post types is published. Enter a comma-separated list.',
+		'value'=>'post,sp_sermon',
+		'description'=>'Push notifications will be sent whenever one of these post types is published. Enter a comma-separated list.',
 		'admin_only' => 0
 	),
-	'android_icon'=>Array(
-		'type'=>'text',
-		'label'=>'Android Icon Resource',
-		'value'=>'ic_stat_onesignal_default',
-		'description'=>'Enter the name of a drawable resource available in your app. (e.g. ic_stat_notify)',
+	'fcm_is_live'=>Array(
+		'type'=>'checkbox',
+		'label'=>'Send notifications for real to all devices.',
+		'checkvalue'=>1,
+		'value'=>1,
+		'description'=>'Unless this is checked, all notifications will go to devices in the "test" group only.',
 		'admin_only' => 0
-	)
+	),
+	// 'android_icon'=>Array(
+	// 	'type'=>'text',
+	// 	'label'=>'Android Icon Override',
+	// 	'value'=>'ic_stat_notify',
+	// 	'description'=>'Enter the name of a drawable resource available in your app. (e.g. ic_stat_notify)',
+	// 	'admin_only' => 0
+	// )
 );
 
 
@@ -115,114 +118,6 @@ foreach ($options as $key=>$value)
 
 		<?php submit_button(); ?>
 
-	</form>
-	
-	<script type="text/javascript">
-		function jmapp_check_submit()
-		{
-			console.log('preparing to submit');
-			
-			// check to see if form has all required fields
-			var title = jQuery('#jmapp_now_title').val();
-			var subtitle = jQuery('#jmapp_now_subtitle').val();
-			var message = jQuery('#jmapp_now_message').val();
-			var url = jQuery('#jmapp_now_url').val();
-			var custom = jQuery('#jmapp_now_custom').val();
-			var id = jQuery('#jmapp_now_id').val();
-			var testing = jQuery('#jmapp_now_test')[0].checked ? "1" : "0";
-			var ready = jQuery('#jmapp_now_confirm')[0].checked ? "1" : "0";
-			
-			if (ready && title && message)
-			{
-				var data = {
-					action: 'jmapp_ajax_notify',
-					jmapp_now_title: title,
-					jmapp_now_subtitle: subtitle,
-					jmapp_now_message: message,
-					jmapp_now_url: url,
-					jmapp_now_custom: custom,
-					jmapp_now_id: id,
-					jmapp_now_test: testing,
-					jmapp_now_ready: ready,
-				};
-				
-				jQuery.post(ajaxurl, data, function(res){
-					console.log(res);
-					
-					// onesignal used to report the number of recipients
-					// with a recipients field
-					// fcm just returns an array of message_ids in the results field
-					// or one single message_id
-					var plural = '';
-					var recipients = 0;
-					if (res.multicast_id && res.success == 1 && res.results.length > 1) {
-						plural = 's';
-						recipients = res.results.length;
-					}
-					if (res.message_id || (res.results && res.results.length == 1)) recipients = 1;
-					
-					jQuery('#jmapp_alert').html('Sent to ' + recipients + ' recipient' + plural + '.');
-					// else jQuery('#jmapp_alert').html('FAILED TO SEND');
-				}, 'json');
-				
-				jQuery('#jmapp_now_form').hide();
-				jQuery('#jmapp_alert').html('SENDING...');
-			}
-			else
-			{
-				jQuery('#jmapp_alert').html('You must include a title, message, and check the "Are You Sure?" box.');
-			}
-		}
-	</script>
-	
-	<div class="jmapp_alert" style="color:red; text-transform:uppercase;" id="jmapp_alert"></div>
-	<form action="admin-post.php" method="post" onsubmit="jmapp_check_submit(); return false;" id="jmapp_now_form">
-		<h2>Send Immediate Message</h2>
-		<p>Please don't overuse this feature!</p>
-		<table class="form-table">
-			<tr valign="top">
-				<th scope="row">Title:</th>
-				<td><input style="width:60%;" type="text" id="jmapp_now_title" value="" /></td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">iOS 10 Subtitle:</th>
-				<td><input style="width:60%;" type="text" id="jmapp_now_subtitle" value="" /></td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">Message:</th>
-				<td><input style="width:60%;" type="text" id="jmapp_now_message" value="" /></td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">URL:</th>
-				<td><input style="width:60%;" type="text" id="jmapp_now_url" value="" />
-					<br /><small>The device will open a browser to this URL when the notification is clicked.</small>
-				</td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">JSON Data:</th>
-				<td><input style="width:60%;" type="text" id="jmapp_now_custom" value="" />
-				<br /><small>Data for the app to handle. Must be valid JSON.</small>
-			</td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">POST ID</th>
-				<td><input style="width:60%;" type="text" id="jmapp_now_id" value="" />
-					<br /><small>The device will open the data for this post inside the app when notification is clicked. (This takes precedence over the 'url' and 'JSON Data' settings above.)</small>
-				</td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">Send to Testing Devices?</th>
-				<td><input type="checkbox" id="jmapp_now_test" checked="checked" /><br /><small>Send to devices in the "Test Devices" group only</small></td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">Are You Sure?</th>
-				<td><input type="checkbox" id="jmapp_now_confirm" value="1" onClick="//return confirm('Are you sure?');" /><br /><small>You have to click this checkbox if you really want to send the notification.</small></td>
-			</tr>
-		</table>
-		
-		<input type="hidden" name="action" value="jmapp_maybe_notify" />
-		<?php submit_button('Send Notification Now'); ?>
-		
 	</form>
 	
 	<h3>Registered Devices</h3>

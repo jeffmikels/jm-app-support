@@ -45,9 +45,19 @@ define('JMAPP_SCORE_APIKEY', 'b34fbaddc8a0059358c901f7b682018e');
 			type can be 'automatic' or 'manual'
 
 	notifications
+		+ get notifications
+			GET wp-json/jmapp/v1/notifications
 		+ get notification
 			GET wp-json/jmapp/v1/notifications/{optional id}
-
+		+ get a list of potential notification topics
+			GET wp-json/jmapp/v1/notifications/topics
+			topics should be generated for post_type and post_category
+	
+	subsites
+		+ get subsites
+			GET wp-json/jmapp/v1/subsites
+			returns a list of subsites
+	
 	user data
 		+ get user data with prayer walks
 			@auth required
@@ -74,6 +84,15 @@ define('JMAPP_SCORE_APIKEY', 'b34fbaddc8a0059358c901f7b682018e');
 
 add_action( 'rest_api_init', function () {
 	// WE ADD SPECIAL REST ROUTES TO ACCOUNT FOR CUSTOM ROLES/CAPABILITIES
+
+	// ADMIN MAINTENANCE ENDPOINT ===========================
+	register_rest_route( 'jmapp/v1', '/fix', array(
+		'methods' => 'GET',
+		'callback' => 'jmapp_fix_handler',
+	) );
+	
+
+	/// GAME DATA ENDPOINTS =================================
 	register_rest_route( 'jmapp/v1', '/scores', array(
 		'methods' => 'POST',
 		'callback' => 'jmapp_scores_post_handler',
@@ -83,6 +102,7 @@ add_action( 'rest_api_init', function () {
 		'callback' => 'jmapp_scores_get_handler',
 	) );
 	
+	/// PRAYER WALK ENDPOINTS ===============================
 	register_rest_route( 'jmapp/v1', '/prayer_walks/create', array(
 		'methods' => 'POST',
 		'callback' => 'jmapp_prayer_walks_create_handler',
@@ -111,7 +131,6 @@ add_action( 'rest_api_init', function () {
 		'methods' => 'GET',
 		'callback' => 'jmapp_prayer_walks_stats_handler',
 	) ); // returns the url for the map of all prayer walks
-	
 	register_rest_route( 'jmapp/v1', '/prayer_walks/(?P<id>.+)/marker', array(
 		'methods' => 'POST',
 		'callback' => 'jmapp_prayer_walks_marker_handler',
@@ -124,13 +143,7 @@ add_action( 'rest_api_init', function () {
 		),
 	) );
 
-	// maintenance routes
-	register_rest_route( 'jmapp/v1', '/fix', array(
-		'methods' => 'GET',
-		'callback' => 'jmapp_fix_handler',
-	) );
-	
-	// user routes
+	// USER ENDPOINTS ====================================
 	register_rest_route( 'jmapp/v1', '/user', array(
 		'methods' => 'GET',
 		'callback' => 'jmapp_user_handler',
@@ -163,6 +176,8 @@ add_action( 'rest_api_init', function () {
 		'callback' => 'jmapp_user_reset_handler_2',
 	));
 
+
+	// DEVICE ENDPOINT =======================================
 	register_rest_route( 'jmapp/v1', '/device/add', array(
 		'methods' => 'POST',
 		'callback' => 'jmapp_user_device_handler',
@@ -173,8 +188,64 @@ add_action( 'rest_api_init', function () {
 				}
 			),
 		),
+	));
+
+	// NOTIFICATIONS ENDPOINTS ===============================
+	register_rest_route( 'jmapp/v1', '/notifications', array(
+		'methods' => 'GET',
+		'callback' => 'jmapp_notifications_get_handler',
 	) );
+	register_rest_route( 'jmapp/v1', '/notifications/(?P<id>\d+)', array(
+		'methods' => 'GET',
+		'callback' => 'jmapp_notifications_get_handler',
+	) );
+	register_rest_route( 'jmapp/v1', '/notifications/topics', array(
+		'methods' => 'GET',
+		'callback' => 'jmapp_notifications_topics_get_handler',
+	) );
+
+	// SUBSITES ENDPOINTS ===============================
+	register_rest_route( 'jmapp/v1', '/subsites', array(
+		'methods' => 'GET',
+		'callback' => 'jmapp_subsites_get_handler',
+	) );
+
 });
+
+function jmapp_notifications_get_handler($request)
+{
+	$id = $request['id'];
+	return jmapp_get_notifications($id,10);
+}
+
+function jmapp_notifications_topics_get_handler()
+{
+	// return the main topic, topics for each allowed post_type, topics for each category
+	$sitename = get_bloginfo('name');
+	$main_topic = jmapp_get_option('fcm_app_topic', preg_replace('#https?://#', '', home_url()));
+	$retval = [
+		'main' => ['label' => $sitename, 'topic' => $main_topic],
+		'topics' => []
+	];
+	$types = explode(',', jmapp_get_option('auto_send_post_types', 'post,sp_sermon'));
+	$typeinfo = get_post_types([], 'objects', 'or');
+	foreach ($types as $type)
+	{
+		if (empty($typeinfo[$type])) continue;
+		$label = $typeinfo[$type]->label ?? $type;
+		$topic = $main_topic . '--' . $type;
+		$retval['topics'][] = ['label' => $label, 'topic' => $topic];
+	}
+	return $retval;
+}
+
+function jmapp_subsites_get_handler()
+{
+	$s = jmapp_get_option('app_subsites');
+	if (empty($s)) return [];
+	return explode(',',$s);
+}
+
 
 function jmapp_user_firebasejwt_handler()
 {

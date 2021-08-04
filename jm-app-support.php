@@ -46,7 +46,7 @@ include "jm-app-admin-hooks.php";
 include "jm-app-user-meta.php";
 include "jm-app-custom-types.php";
 include "jm-app-prayer-walks.php";
-include "jm-app-notifications-handler.php";
+include "jm-app-notifications.php";
 include "jm-app-providers.php";
 include "jm-app-game-scores.php";
 include "jm-app-jwt-hooks.php";
@@ -104,5 +104,16 @@ function jmapp_uninstall()
 	remove_role(JMAPP_USER_ROLE);
 }
 
+function jmapp_get_option($key = NULL, $default = NULL)
+{
+	$stored_options = get_option('jmapp_options', []);
+	if ($key === NULL) return $stored_options;
+	return $stored_options[$key] ?? $default;
+}
 
-
+function jmapp_set_option($key, $value = NULL)
+{
+	$stored_options = get_option('jmapp_options', []);
+	$stored_options[$key] = $value;
+	return update_option('jmapp_options', $stored_options);
+}

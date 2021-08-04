@@ -1,5 +1,79 @@
 <?php
 
+// will be called from jm-app-custom-types.php
+function jmapp_register_notifications()
+{
+	register_post_type( 'notification', array
+	(
+		'labels' => array
+		(
+			'name' => __( 'Notifications' ),
+			'singular_name' => __( 'Notification' ),
+			'add_new' => __( 'Add New Notification' ),
+			'add_new_item' => __( 'Add New Notification' ),
+			'edit_item' => __( 'Edit Notification' ),
+			'new_item' => __( 'New Notification' ),
+			'view_item' => __( 'View Notification' ),
+			'search_items' => __( 'Search Notifications' ),
+			'not_found' => __( 'No Notifications found' ),
+			'not_found_in_trash' => __( 'No Notifications found in Trash' ),
+		),
+		'public' => true,
+		'has_archive' => false,
+		'rewrite' => array('slug' => 'notification'),
+		'taxonomies' => array(),
+		'publicly_queryable' => true,
+		'exclude_from_search' => false,
+		'menu_position' => 20,
+		'menu_icon' => 'dashicons-format-status',
+		'show_in_rest' => true,
+		'rest_base' => 'notifications',
+		'supports' => array('title', 'custom-fields'),
+	));
+}
+
+/*
+Notification items should have the following attributes:
+'title','body','timestamp','postId','url'
+*/
+function jmapp_save_notification($n) {
+	$title = time() . ' - ' . $n['title'];
+	$id = wp_insert_post(['post_title' => $title, 'post_type' => 'notification', 'post_status'=>'publish']);
+	if ($id) {
+		if (!is_array($n['data'])) $n['data'] = [];
+		$n['data']['notificationId'] = $id;
+		update_post_meta($id, 'json', json_encode($n));
+		// update_post_meta($id, 'data', $n);
+		return ($id);
+	}
+	return 0;
+}
+
+function jmapp_get_notifications($id = NULL, $count=-1)
+{
+	$args = ['post_type' => 'notification', 'post_status'=>['publish'], 'numberposts' => $count];
+	if ($id !== NULL) $args['p'] = $id;
+
+	$notifications = get_posts($args);
+	foreach($notifications as $key => $n)
+	{
+		$notifications[$key]->meta = get_post_meta($n->ID);
+	}
+	return $notifications;
+}
+
+/* REST MODIFICATIONS FOR CUSTOM POST TYPES */
+add_filter("rest_prepare_notification", 'jmapp_rest_prepare_notification', 10, 3);
+function jmapp_rest_prepare_notification($data, $post, $request) {
+	// $_data = [];
+	// $_data['title'] = $post->post_title;
+	// $_data['json'] = $post->json;
+	// $_data['notification_data'] = $post->data;
+	$data->data['notification'] = json_decode($post->json);
+	$data->data['notification_json'] = $post->json;
+	return $data;
+}
+
 add_action( 'wp_ajax_jmapp_ajax_notify', 'jmapp_ajax_notify', 99 );
 function jmapp_ajax_notify()
 {
@@ -7,6 +81,7 @@ function jmapp_ajax_notify()
 	echo $res;
 	wp_die();
 }
+
 
 add_action( 'admin_post_jmapp_maybe_notify', 'jmapp_maybe_notify', 99 );
 function jmapp_maybe_notify() {
@@ -24,12 +99,12 @@ function jmapp_maybe_notify() {
 		'subtitle' => $subtitle,
 		'body' => $message,
 		'testing' => $testing,
+		'data' => [],
 	];
 	if (!empty($id)) {
 		$imageUrl = get_the_post_thumbnail_url($id);
 		$imageUrl = ($imageUrl) ? $imageUrl : '';
 		$post = get_post($id);
-		$notification['big_picture'] = $imageUrl;
 		$notification['image'] = $imageUrl;
 		$notification['data'] = [
 			'image' => $imageUrl,
@@ -45,12 +120,12 @@ function jmapp_maybe_notify() {
 		];
 	}
 	else if (!empty($custom)) $notification['data'] = json_decode($custom, TRUE);
-	else if (!empty($url)) $notification['url'] = $url;
+	else if (!empty($url)) $notification['data']['targetUrl'] = $url;
 	return jmapp_send_notification($notification);
 }
 
-add_action('transition_post_status', 'jmapp_publish_post', 99, $accepted_args=3);
-function jmapp_publish_post($new_status, $old_status, $post)
+add_action('transition_post_status', 'jmapp_maybe_notify_on_publish', 99, $accepted_args=3);
+function jmapp_maybe_notify_on_publish($new_status, $old_status, $post)
 {
 	
 	if ($new_status != 'publish') return;
@@ -81,12 +156,11 @@ function jmapp_publish_post($new_status, $old_status, $post)
 				'body' => $post->post_title,
 				'big_picture' => $imageUrl,
 				'image' => $imageUrl,
-				'url' => get_post_permalink($post->ID),
 				'data' => [
 					'postId' => $post->ID,
 					'title' => 'New Content Published',
 					'body' => $post->post_title,
-					'targetUrl' => get_post_permalink($post->ID),
+					'targetUrl' => get_post_permalink($post->ID), // in case the app can't handle wordpress providers
 					'image' => $imageUrl,
 					'providerData' => [
 						'title' => $post->post_title,
@@ -109,11 +183,6 @@ function jmapp_publish_post($new_status, $old_status, $post)
 function jmapp_send_notification($n)
 {
 	if (!is_array($n['data'])) $n['data'] = [];
-	$notificationId = jmapp_save_notification($n);
-	$n['data']['notificationId'] = $notificationId;
-	
-	// this plugin used to use onesignal for notifications
-	// we are now using Firebase Cloud Messaging directly
 	
 	// get the options
 	$stored_options = get_option('jmapp_options',array());
@@ -121,18 +190,32 @@ function jmapp_send_notification($n)
 	if (!empty($stored_options['fcm_is_live']) && $stored_options['fcm_is_live'] == 1) $test_only = FALSE;
 	if (!empty($n['testing']) && ($n['testing'] == 1 || $n['testing'] == '1')) $test_only = TRUE;
 
+	if (! $test_only )
+	{
+		$notificationId = jmapp_save_notification($n);
+		$n['data']['notificationId'] = $notificationId;
+	}
+	
+	// NOTE: We are still using the legacy API
+	// https://firebase.google.com/docs/cloud-messaging/http-server-ref
+	// consider migrating to the new api, following instructions here:
+	// https://firebase.google.com/docs/cloud-messaging/migrate-v1
+	
 	$fcm_url = 'https://fcm.googleapis.com/fcm/send';
 	
 	/*
 	Firebase Messaging Documentation
-
-	curl https://fcm.googleapis.com/fcm/send -H "Content-Type:application/json" -X POST -d "$DATA" -H "Authorization: key=FCM_SERVER_KEY"
 	
 	https://firebase.google.com/docs/cloud-messaging/concept-options
 	https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages
 	https://firebase.google.com/docs/cloud-messaging/http-server-ref
 
-	// LEGACY FCM NOTIFICATION MESSAGE WITH OPTIONAL DATA
+
+	FCM Legacy-style api call
+	curl https://fcm.googleapis.com/fcm/send -H "Content-Type:application/json" -X POST -d "$DATA" -H "Authorization: key=FCM_SERVER_KEY"
+	
+
+	// FCM LEGACY-STYLE NOTIFICATION MESSAGE WITH OPTIONAL DATA
 	// targeting devices: use "to", "registration_ids", "condition" or none
 	{
 		"condition" : "'TopicA' in topics && ('TopicB' in topics || 'TopicC' in topics)",
@@ -166,18 +249,24 @@ function jmapp_send_notification($n)
 	$fcm_fields = [
 		'priority'     => 'normal',
 		'time_to_live' => 60*60*24*7,
-		'data'         => [],
+		'data'         => [
+			'title'    => $n['title'],
+			'subtitle' => $n['subtitle'],
+			'body'     => $n['body'],
+			'image'    => $n['image'],
+		],
 		'notification' => [
 			'title'    => $n['title'],
 			'subtitle' => $n['subtitle'],
 			'body'     => $n['body'],
+			'image'    => $n['image'],
 			'icon'     => empty($stored_options['android_icon']) ? 'ic_stat_notify' : $stored_options['android_icon'],
 			'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
 			'sound'        => 'default',
 		],
 	];
 	
-	// make sure the 'data' contains title and body too
+	// add the 'data' field if needed
 	if (!empty($n['data']))
 	{
 		$fcm_fields['data'] = $n['data'];
