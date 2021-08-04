@@ -222,19 +222,64 @@ function jmapp_notifications_topics_get_handler()
 {
 	// return the main topic, topics for each allowed post_type, topics for each category
 	$sitename = get_bloginfo('name');
-	$main_topic = jmapp_get_option('fcm_app_topic', preg_replace('#https?://#', '', home_url()));
+	$main_topic = jmapp_get_option('fcm_app_topic', NULL) ?? preg_replace('#https?://#', '', home_url());
 	$retval = [
 		'main' => ['label' => $sitename, 'topic' => $main_topic],
-		'topics' => []
+		'types' => [],
+		'categories' => []
 	];
+
+	// create topics for each post type
 	$types = explode(',', jmapp_get_option('auto_send_post_types', 'post,sp_sermon'));
 	$typeinfo = get_post_types([], 'objects', 'or');
 	foreach ($types as $type)
 	{
 		if (empty($typeinfo[$type])) continue;
-		$label = $typeinfo[$type]->label ?? $type;
-		$topic = $main_topic . '--' . $type;
-		$retval['topics'][] = ['label' => $label, 'topic' => $topic];
+		$label = "All " . $typeinfo[$type]->label ?? $type;
+		$topic = jmapp_build_topic('type', $type);
+		$retval['types'][] = ['label' => $label, 'topic' => $topic];
+	}
+
+	$allcats = get_categories();
+	$catsbyslug = [];
+	foreach ($allcats as $c)
+	{
+		$catsbyslug[$c->slug] = $c->name;
+		if ($c->term_id == 1) $default = $c;
+	}
+
+	// create topic for default category
+	$label = $default->name;
+	$topic = jmapp_build_topic('category', $default->slug);
+	$retval['categories'][] = ['label' => $label, 'topic' => $topic];
+
+	// include topics for other specified categories
+	$c = jmapp_get_option('app_notification_categories', '');
+	if (!empty($c))
+	{
+		// magic word all includes all categories...
+		if (preg_match('/ALL/i', $c))
+		{
+			foreach ($allcats as $c)
+			{
+				if ($c->slug == $default->slug) continue;
+				$label = $c->name;
+				$topic = jmapp_build_topic('category', $c->slug);
+				$retval['categories'][] = ['label' => $label, 'topic' => $topic];
+			}
+		}
+		else
+		{
+			$cat_slugs = explode(',', $c);
+			foreach ($cat_slugs as $slug)
+			{
+				if ($slug == $default->slug) continue;
+				if (empty($catsbyslug[$slug])) continue;
+				$label = $catsbyslug[$slug];
+				$topic = jmapp_build_topic('category', $slug);
+				$retval['categories'][] = ['label' => $label, 'topic' => $topic];
+			}
+		}
 	}
 	return $retval;
 }

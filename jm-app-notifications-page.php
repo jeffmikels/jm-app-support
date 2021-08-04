@@ -19,7 +19,7 @@ $stored_options = get_option('jmapp_options');
 			var testing = jQuery('#jmapp_now_test')[0].checked ? "1" : "0";
 			var ready = jQuery('#jmapp_now_confirm')[0].checked ? "1" : "0";
 			
-			if (ready && title && message)
+			if (ready && (id || (title && message)))
 			{
 				var data = {
 					action: 'jmapp_ajax_notify',
@@ -56,7 +56,7 @@ $stored_options = get_option('jmapp_options');
 			}
 			else
 			{
-				jQuery('#jmapp_alert').html('You must include a title, message, and check the "Are You Sure?" box.');
+				jQuery('#jmapp_alert').html('You must use either a post ID OR a title and message. You must also check the "Are You Sure?" box.');
 			}
 		}
 	</script>
@@ -67,6 +67,12 @@ $stored_options = get_option('jmapp_options');
 		<h2>Send Push Notification</h2>
 		<p>Please don't overuse this feature!</p>
 		<table class="form-table">
+			<tr valign="top">
+				<th scope="row">POST ID</th>
+				<td><input style="width:60%;" type="text" id="jmapp_now_id" value="" />
+					<br /><small>Send a notification for this post ID. If set, 'url' and 'JSON' fields will be ignored, but the other fields will override what is automatically generated from the post.</small>
+				</td>
+			</tr>
 			<tr valign="top">
 				<th scope="row">Title:</th>
 				<td><input style="width:60%;" type="text" id="jmapp_now_title" value="" /></td>
@@ -94,12 +100,6 @@ $stored_options = get_option('jmapp_options');
 				<td><input style="width:60%;" type="text" id="jmapp_now_custom" value="" />
 				<br /><small>Data for the app to handle. Must be valid JSON.</small>
 			</td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">POST ID</th>
-				<td><input style="width:60%;" type="text" id="jmapp_now_id" value="" />
-					<br /><small>The device will open the data for this post inside the app when notification is clicked. (This takes precedence over the 'url' and 'JSON Data' settings above.)</small>
-				</td>
 			</tr>
 			<tr valign="top">
 				<th scope="row">Send to Testing Devices Only?</th>

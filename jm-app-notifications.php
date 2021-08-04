@@ -32,6 +32,18 @@ function jmapp_register_notifications()
 	));
 }
 
+function jmapp_main_topic()
+{
+	return jmapp_get_option('fcm_app_topic', NULL) ?? preg_replace('#https?://#', '', home_url());
+}
+
+/// $typestring should be "type" or "category"
+function jmapp_build_topic($typestring, $slug)
+{
+	$main_topic = jmapp_main_topic();
+	return $main_topic . '--' . $typestring . '--' . $slug;
+}
+
 /*
 Notification items should have the following attributes:
 'title','body','timestamp','postId','url'
@@ -77,62 +89,55 @@ function jmapp_rest_prepare_notification($data, $post, $request) {
 add_action( 'wp_ajax_jmapp_ajax_notify', 'jmapp_ajax_notify', 99 );
 function jmapp_ajax_notify()
 {
-	$res = jmapp_maybe_notify();
+	$res = jmapp_manual_notification();
 	echo $res;
 	wp_die();
 }
 
 
-add_action( 'admin_post_jmapp_maybe_notify', 'jmapp_maybe_notify', 99 );
-function jmapp_maybe_notify() {
+add_action( 'admin_post_jmapp_maybe_notify', 'jmapp_manual_notification', 99 );
+function jmapp_manual_notification() {
 	// generate notification
 	$title    = stripslashes($_POST['jmapp_now_title']);
 	$subtitle = stripslashes($_POST['jmapp_now_subtitle']);
 	$message  = stripslashes($_POST['jmapp_now_message']);
 	$url      = stripslashes($_POST['jmapp_now_url']);
 	$custom   = stripslashes($_POST['jmapp_now_custom']);
+	$topics   = stripslashes($_POST['jmapp_now_topics']);
 	$id       = stripslashes($_POST['jmapp_now_id']);
 	$testing  = stripslashes($_POST['jmapp_now_test']);
 	$ready    = stripslashes($_POST['jmapp_now_ready']);
-	$notification = [
-		'title' => $title,
-		'subtitle' => $subtitle,
-		'body' => $message,
-		'testing' => $testing,
-		'data' => [],
-	];
+	
+	$notification = ['data' => []];
 	if (!empty($id)) {
-		$imageUrl = get_the_post_thumbnail_url($id);
-		$imageUrl = ($imageUrl) ? $imageUrl : '';
 		$post = get_post($id);
-		$notification['image'] = $imageUrl;
-		$notification['data'] = [
-			'image' => $imageUrl,
-			'postId' => $id,
-			'providerData' => [
-				'title' => $post->post_title,
-				'provider' => 'wordpress',
-				'arguments' => [
-					'endpoint' => get_post_permalink($id),
-					'static' => 'true'
-				]
-			]
-		];
+		$notification = jmapp_build_post_notification($post);		
 	}
 	else if (!empty($custom)) $notification['data'] = json_decode($custom, TRUE);
 	else if (!empty($url)) $notification['data']['targetUrl'] = $url;
+
+	// override post settings 
+	if (!empty($title)) $notification['title'] = $title;
+	if (!empty($subtitle)) $notification['subtitle'] = $subtitle;
+	if (!empty($body)) $notification['body'] = $body;
+	if (!empty($topics)) $topics = explode(',', $topics);
+	else $topics = [];
+
+	// always include the testing variable
+	$notification['testing'] = $testing;
+
 	return jmapp_send_notification($notification);
 }
 
-add_action('transition_post_status', 'jmapp_maybe_notify_on_publish', 99, $accepted_args=3);
-function jmapp_maybe_notify_on_publish($new_status, $old_status, $post)
+add_action('transition_post_status', 'jmapp_notify_on_post_publish', 99, $accepted_args=3);
+function jmapp_notify_on_post_publish($new_status, $old_status, $post)
 {
 	
 	if ($new_status != 'publish') return;
 	if ($old_status == 'publish') return;
 	
 	// get the options
-	$stored_options = get_option('jmapp_options',array());
+	$stored_options = jmapp_get_option();
 	
 	if (empty($stored_options['fcm_server_key']))
 	{
@@ -143,40 +148,57 @@ function jmapp_maybe_notify_on_publish($new_status, $old_status, $post)
 	// check to see if post is one of the valid post types for notifications
 	foreach (explode(',', $stored_options['auto_send_post_types']) as $post_type)
 	{
-		
 		if (trim($post_type) == $post->post_type)
 		{
-			$imageUrl = get_the_post_thumbnail_url($post);
-			$imageUrl = ($imageUrl) ? $imageUrl : '';
-			
-			// generate notification
-			$notification = [
-				'title' => 'New Content Published!',
-				'subtitle' => '',
-				'body' => $post->post_title,
-				'big_picture' => $imageUrl,
-				'image' => $imageUrl,
-				'data' => [
-					'postId' => $post->ID,
-					'title' => 'New Content Published',
-					'body' => $post->post_title,
-					'targetUrl' => get_post_permalink($post->ID), // in case the app can't handle wordpress providers
-					'image' => $imageUrl,
-					'providerData' => [
-						'title' => $post->post_title,
-						'provider' => 'wordpress',
-						'arguments' => [
-							'endpoint' => get_post_permalink($post->ID),
-							'static' => 'true'
-						]
-					]
-				]
-			];
+			$notification = jmapp_build_post_notification($post);
+
 			$result = jmapp_send_notification($notification);
-			jmapp_msg('Push notifications were sent. <div class="debug" style="display:none">' . $result .'</div>');
+			$notification_debug = json_encode($notification, JSON_PRETTY_PRINT);
+			jmapp_msg('Push notifications were sent. <div class="debug" style="display:none">' . $result .'</div><div class="debug" style="display:none">' . $notification_debug .'</div>');
 			return;
 		}
 	}
+}
+
+function jmapp_build_post_notification($post)
+{
+	// this is a valid post type for notifications
+	$imageUrl = get_the_post_thumbnail_url($post);
+	$imageUrl = ($imageUrl) ? $imageUrl : '';
+	
+	// generate notification
+	$notification = [
+		'title' => 'New Content Published!',
+		'subtitle' => '',
+		'body' => $post->post_title,
+		'big_picture' => $imageUrl,
+		'image' => $imageUrl,
+		'data' => [
+			'postId' => $post->ID,
+			'title' => 'New Content Published',
+			'body' => $post->post_title,
+			'targetUrl' => get_post_permalink($post->ID), // in case the app can't handle wordpress providers
+			'image' => $imageUrl,
+			'providerData' => [
+				'title' => $post->post_title,
+				'provider' => 'wordpress',
+				'arguments' => [
+					'endpoint' => get_post_permalink($post->ID),
+					'static' => 'true'
+				]
+			]
+		]
+	];
+
+	// add the relevant topics to this notification, remember the main topic will always be included
+	$notification['topics'] = [];
+	$notification['topics'][] = jmapp_build_topic('type', $post->post_type);
+	foreach(get_the_category($post->ID) as $cat)
+	{
+		$notification['topics'][] = jmapp_build_topic('category', $cat->slug);
+	}
+
+	return $notification;
 }
 
 // PLUGIN FUNCTIONS
@@ -185,7 +207,7 @@ function jmapp_send_notification($n)
 	if (!is_array($n['data'])) $n['data'] = [];
 	
 	// get the options
-	$stored_options = get_option('jmapp_options',array());
+	$stored_options = jmapp_get_option();
 	$test_only = TRUE;
 	if (!empty($stored_options['fcm_is_live']) && $stored_options['fcm_is_live'] == 1) $test_only = FALSE;
 	if (!empty($n['testing']) && ($n['testing'] == 1 || $n['testing'] == '1')) $test_only = TRUE;
@@ -274,19 +296,19 @@ function jmapp_send_notification($n)
 	
 	// also include all of fcm data in a json encoded field for backward compatibility
 	$fcm_fields['data']['json'] = json_encode($fcm_fields['data']);
-	
-	if (!empty($stored_options['fcm_app_topic'])) {
-		$topics = explode(',', $stored_options['fcm_app_topic']);
-		$condition = [];
-		foreach ($topics as $topic)
-		{
-			$topic = trim($topic);
-			$condition[] = "'$topic' in topics";
-		}
-		$condition_string = implode(' || ', $condition);
-		$fcm_fields['condition'] = $condition_string;
+
+	// now process the topics into a condition string
+	$topics = [jmapp_main_topic()];
+	$topics = array_merge($topics, $n['topics'] ?? []);
+	foreach ($topics as $topic)
+	{
+		$topic = trim($topic); // remove whitespace
+		$topic = preg_replace('/["\']/','-', $topic); // remove quotation marks if they got into the topic
+		$condition[] = "'$topic' in topics";
 	}
-	
+	$condition_string = implode(' || ', $condition);
+	$fcm_fields['condition'] = $condition_string;
+
 	
 	// This next line groups notifications together on android
 	// it isn't useful unless you have a feature in the app to show

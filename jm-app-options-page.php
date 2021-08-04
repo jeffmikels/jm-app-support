@@ -49,6 +49,13 @@ $options = Array(
 		'description'=>'Push notifications will be sent whenever one of these post types is published. Enter a comma-separated list.',
 		'admin_only' => 0
 	),
+	'app_notification_categories'=>Array(
+		'type'=>'text',
+		'label'=>'Specify the categories to expose as "subscribable" in the app.',
+		'value'=>'',
+		'description'=>'Users will be allowed to subscribe to notifications for these categories. The default category will always be subscribable. Use ALL to expose all categories. (Comma-separated category slugs)',
+		'admin_only' => 0
+	),
 	'fcm_is_live'=>Array(
 		'type'=>'checkbox',
 		'label'=>'Send notifications for real to all devices.',
