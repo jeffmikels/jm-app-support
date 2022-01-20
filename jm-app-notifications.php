@@ -32,15 +32,23 @@ function jmapp_register_notifications()
 	));
 }
 
-function jmapp_main_topic()
+function jmapp_base_topic()
 {
 	return jmapp_get_option('fcm_app_topic', NULL) ?? preg_replace('#https?://#', '', home_url());
+}
+
+function jmapp_main_topics()
+{
+	$topics = [jmapp_base_topic()];
+	$other_topics = jmapp_get_option('fcm_extra_topics', '');
+	if (!empty($other_topics)) $topics = array_merge($topics, explode(',', $other_topics));
+	return $topics;
 }
 
 /// $typestring should be "type" or "category"
 function jmapp_build_topic($typestring, $slug)
 {
-	$main_topic = jmapp_main_topic();
+	$main_topic = jmapp_base_topic();
 	return $main_topic . '--' . $typestring . '--' . $slug;
 }
 
@@ -74,15 +82,18 @@ function jmapp_get_notifications($id = NULL, $count=-1)
 	return $notifications;
 }
 
-/* REST MODIFICATIONS FOR CUSTOM POST TYPES */
+/* REST MODIFICATIONS FOR NOTIFICATIONS */
 add_filter("rest_prepare_notification", 'jmapp_rest_prepare_notification', 10, 3);
 function jmapp_rest_prepare_notification($data, $post, $request) {
 	// $_data = [];
 	// $_data['title'] = $post->post_title;
 	// $_data['json'] = $post->json;
 	// $_data['notification_data'] = $post->data;
+	// return $post;
 	$data->data['notification'] = json_decode($post->json);
 	$data->data['notification_json'] = $post->json;
+	$data->data['fcm_data'] = $post->fcm_data;
+	$data->data['topics'] = $post->topics;
 	return $data;
 }
 
@@ -120,8 +131,7 @@ function jmapp_manual_notification() {
 	if (!empty($title)) $notification['title'] = $title;
 	if (!empty($subtitle)) $notification['subtitle'] = $subtitle;
 	if (!empty($body)) $notification['body'] = $body;
-	if (!empty($topics)) $topics = explode(',', $topics);
-	else $topics = [];
+	if (!empty($topics)) $notification['topics'] = explode(',', $topics);
 
 	// always include the testing variable
 	$notification['testing'] = $testing;
@@ -298,7 +308,7 @@ function jmapp_send_notification($n)
 	$fcm_fields['data']['json'] = json_encode($fcm_fields['data']);
 
 	// now process the topics into a condition string
-	$topics = [jmapp_main_topic()];
+	$topics = jmapp_main_topics();
 	$topics = array_merge($topics, $n['topics'] ?? []);
 	foreach ($topics as $topic)
 	{
@@ -330,10 +340,12 @@ function jmapp_send_notification($n)
 			unset($fcm_fields['registration_ids']);
 			unset($fcm_fields['condition']);
 		}
+	} else {
+		// add fcm data to the notification post
+		update_post_meta($notificationId, 'fcm_data', $fcm_fields);
+		update_post_meta($notificationId, 'topics', $topics);
 	}
 	
-	// add fcm data to the notification post
-	add_post_meta($notificationId, 'fcm_data', $fcm_fields, TRUE);
 	
 	$fcm_fields = json_encode($fcm_fields);
 	
@@ -351,4 +363,70 @@ function jmapp_send_notification($n)
 	curl_close($ch);
 	
 	return $response;
+}
+
+function jmapp_notifications_topics()
+{
+	// return the main topic, topics for each allowed post_type, topics for each category
+	$sitename = get_bloginfo('name');
+	$base_topic = jmapp_base_topic();
+	$retval = [
+		'main' => ['label' => $sitename, 'topic' => $base_topic],
+		'types' => [],
+		'categories' => []
+	];
+
+	// create topics for each post type
+	$types = explode(',', jmapp_get_option('auto_send_post_types', 'post,sp_sermon'));
+	$typeinfo = get_post_types([], 'objects', 'or');
+	foreach ($types as $type)
+	{
+		if (empty($typeinfo[$type])) continue;
+		$label = "All " . $typeinfo[$type]->label ?? $type;
+		$topic = jmapp_build_topic('type', $type);
+		$retval['types'][] = ['label' => $label, 'topic' => $topic];
+	}
+
+	$allcats = get_categories();
+	$catsbyslug = [];
+	foreach ($allcats as $c)
+	{
+		$catsbyslug[$c->slug] = $c->name;
+		if ($c->term_id == 1) $default = $c;
+	}
+
+	// create topic for default category
+	$label = $default->name;
+	$topic = jmapp_build_topic('category', $default->slug);
+	$retval['categories'][] = ['label' => $label, 'topic' => $topic];
+
+	// include topics for other specified categories
+	$c = jmapp_get_option('app_notification_categories', '');
+	if (!empty($c))
+	{
+		// magic word all includes all categories...
+		if (preg_match('/ALL/i', $c))
+		{
+			foreach ($allcats as $c)
+			{
+				if ($c->slug == $default->slug) continue;
+				$label = $c->name;
+				$topic = jmapp_build_topic('category', $c->slug);
+				$retval['categories'][] = ['label' => $label, 'topic' => $topic];
+			}
+		}
+		else
+		{
+			$cat_slugs = explode(',', $c);
+			foreach ($cat_slugs as $slug)
+			{
+				if ($slug == $default->slug) continue;
+				if (empty($catsbyslug[$slug])) continue;
+				$label = $catsbyslug[$slug];
+				$topic = jmapp_build_topic('category', $slug);
+				$retval['categories'][] = ['label' => $label, 'topic' => $topic];
+			}
+		}
+	}
+	return $retval;
 }

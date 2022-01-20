@@ -35,6 +35,13 @@ $options = Array(
 		'description'=>'Users of your app can subscribe to notifications according to topic. The value here must be unique to this website, and therefore, it probably should be the bundle id of your app or the full url of this website.',
 		'admin_only' => 0
 	),
+	'fcm_extra_topics'=>Array(
+		'type'=>'text',
+		'label'=>'Extra topics to use when publishing',
+		'value'=>'',
+		'description'=>'The values here (comma-separated) will be used as topics whenever new content is published. If you have multiple sites running this plugin, it can be helpful to use the same topic on all of them. If another site claims this site as a "subsite" be sure to include that site\'s "main topic" here.',
+		'admin_only' => 0
+	),
 	'app_subsites'=>Array(
 		'type'=>'text',
 		'label'=>'Sub-sites to tell the app about.',

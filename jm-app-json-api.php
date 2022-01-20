@@ -80,6 +80,24 @@ define('JMAPP_SCORE_APIKEY', 'b34fbaddc8a0059358c901f7b682018e');
 
 		use authentication token
 		-H "Authorization: Bearer {token}"
+
+	fire TV data feed
+		GET wp-json/jmapp/v1/tvfeed
+		returns a paged list of sermons with series as categories following this format:
+		{
+		  "id": "169313",
+		  "title": "Beautiful Whale Tail Uvita Costa Rica",
+		  "description": "Beautiful Whale Tail Uvita Costa Rica",
+		  "duration": "86",
+		  "thumbURL": "http://le2.cdn01.net/videos/0000169/0169313/thumbs/0169313__007f.jpg",
+		  "imgURL": "http://le2.cdn01.net/videos/0000169/0169313/thumbs/0169313__007f.jpg",
+		  "videoURL": "http://edge-vod-media.cdn01.net/encoded/0000169/0169313/video_1880k/T7J66Z106.mp4?source=firetv&channel_id=13454",
+		  "categories": [
+		    "Costa Rica Islands"
+		  ],
+		  "channel_id": "13454"
+		},
+
 */
 
 add_action( 'rest_api_init', function () {
@@ -89,6 +107,17 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'jmapp/v1', '/fix', array(
 		'methods' => 'GET',
 		'callback' => 'jmapp_fix_handler',
+	) );
+
+	/// TV FEED ENDPOINT ====================================
+	register_rest_route( 'jmapp/v1', '/tvfeed', array(
+		'methods' => 'GET',
+		'callback' => 'jmapp_tvfeed_handler',
+	) );
+	
+	register_rest_route( 'jmapp/v1', '/tvfeed/live', array(
+		'methods' => 'GET',
+		'callback' => 'jmapp_tvfeed_live_handler',
 	) );
 	
 
@@ -212,6 +241,84 @@ add_action( 'rest_api_init', function () {
 
 });
 
+function jmapp_tvfeed_live_handler($request)
+{
+	// TODO: change this to a wordpress option
+	// check for a live stream
+	$live_stream_url = trim(file_get_contents('https://luke.lafayettecc.org/live/streamactive'));
+	if (!empty($live_stream_url))
+	{
+		return [
+			'id' => 'live',
+			'channel_id' => 'live',
+			'title' => 'Live Stream',
+			'description' => 'Our live stream is now active.',
+			'videoURL' => $live_stream_url,
+			'videoURL_RTMP' => 'rtmp://jeffmikels.org/live/test',
+			'series' => 'Live',
+			'categories' => ['live'],
+			'dateTime' => Date('Y-m-d'),
+			'date' => Date('m/d/Y'),
+			'imgURL' => 'https://lafayettecc.org/images/LCC-Logo-Gradient.jpg',
+			'thumbURL' => 'https://lafayettecc.org/images/LCC-Logo-Gradient-768x432.jpg',
+		];
+	}
+	return [];
+}
+
+function jmapp_tvfeed_handler($request)
+{
+	/*
+		{
+		  "id": "169313",
+		  "title": "Beautiful Whale Tail Uvita Costa Rica",
+		  "description": "Beautiful Whale Tail Uvita Costa Rica",
+		  "duration": "86",
+		  "thumbURL": "http://le2.cdn01.net/videos/0000169/0169313/thumbs/0169313__007f.jpg",
+		  "imgURL": "http://le2.cdn01.net/videos/0000169/0169313/thumbs/0169313__007f.jpg",
+		  "videoURL": "http://edge-vod-media.cdn01.net/encoded/0000169/0169313/video_1880k/T7J66Z106.mp4?source=firetv&channel_id=13454",
+		  "categories": [
+		    "Costa Rica Islands"
+		  ],
+		  "channel_id": "13454"
+		},
+	*/
+	$page = $request['page'] ?? 1;
+	$posts_per_page = $request['numseries'] ?? $request['posts_per_page'] ?? $request['count'] ?? 20;
+	if (function_exists('sp_get_series_with_sermons'))
+	{
+		$results = [];
+		$series = sp_get_series_with_sermons($page, $posts_per_page);
+		foreach ($series as $s)
+		{
+			$series_name = $s->post_title;
+			foreach ($s->children as $child)
+			{
+				$date = get_the_date('', $child);
+				$item = [
+					'id' => $child->ID,
+					'channel_id' => $child->ID,
+					'title' => $child->post_title,
+					'description' => $date . "\r\n" . wp_strip_all_tags($child->post_content),
+					'videoURL' => ($child->{'hq-video'} ?? $child->video)['url'],
+					'series' => $series_name,
+					'categories' => [$series_name],
+					'dateTime' => $child->post_date,
+					'date' => $date,
+					'imgURL' => $s->imageUrl,
+					'thumbURL' => ($s->images['medium'] ?? $s->images['thumbnail'] ?? [''])[0],
+				];
+				$results[] = $item;
+			}
+		}
+		return $results;
+	}
+	else
+	{
+		return [];
+	}
+}
+
 function jmapp_notifications_get_handler($request)
 {
 	$id = $request['id'];
@@ -220,68 +327,7 @@ function jmapp_notifications_get_handler($request)
 
 function jmapp_notifications_topics_get_handler()
 {
-	// return the main topic, topics for each allowed post_type, topics for each category
-	$sitename = get_bloginfo('name');
-	$main_topic = jmapp_get_option('fcm_app_topic', NULL) ?? preg_replace('#https?://#', '', home_url());
-	$retval = [
-		'main' => ['label' => $sitename, 'topic' => $main_topic],
-		'types' => [],
-		'categories' => []
-	];
-
-	// create topics for each post type
-	$types = explode(',', jmapp_get_option('auto_send_post_types', 'post,sp_sermon'));
-	$typeinfo = get_post_types([], 'objects', 'or');
-	foreach ($types as $type)
-	{
-		if (empty($typeinfo[$type])) continue;
-		$label = "All " . $typeinfo[$type]->label ?? $type;
-		$topic = jmapp_build_topic('type', $type);
-		$retval['types'][] = ['label' => $label, 'topic' => $topic];
-	}
-
-	$allcats = get_categories();
-	$catsbyslug = [];
-	foreach ($allcats as $c)
-	{
-		$catsbyslug[$c->slug] = $c->name;
-		if ($c->term_id == 1) $default = $c;
-	}
-
-	// create topic for default category
-	$label = $default->name;
-	$topic = jmapp_build_topic('category', $default->slug);
-	$retval['categories'][] = ['label' => $label, 'topic' => $topic];
-
-	// include topics for other specified categories
-	$c = jmapp_get_option('app_notification_categories', '');
-	if (!empty($c))
-	{
-		// magic word all includes all categories...
-		if (preg_match('/ALL/i', $c))
-		{
-			foreach ($allcats as $c)
-			{
-				if ($c->slug == $default->slug) continue;
-				$label = $c->name;
-				$topic = jmapp_build_topic('category', $c->slug);
-				$retval['categories'][] = ['label' => $label, 'topic' => $topic];
-			}
-		}
-		else
-		{
-			$cat_slugs = explode(',', $c);
-			foreach ($cat_slugs as $slug)
-			{
-				if ($slug == $default->slug) continue;
-				if (empty($catsbyslug[$slug])) continue;
-				$label = $catsbyslug[$slug];
-				$topic = jmapp_build_topic('category', $slug);
-				$retval['categories'][] = ['label' => $label, 'topic' => $topic];
-			}
-		}
-	}
-	return $retval;
+	return jmapp_notifications_topics();
 }
 
 function jmapp_subsites_get_handler()
@@ -751,6 +797,7 @@ function jmapp_simply_json($wp) {
 						$output['posts'][$i]['date'] = get_the_time($_REQUEST['date_format']);
 					else
 						$output['posts'][$i]['date'] = get_the_date();
+					
 					$output['posts'][$i]['niceDate'] = get_the_date();
 					$output['posts'][$i]['uDate'] = get_the_time("U");
 					$output['posts'][$i]['isoDate'] = get_the_time('c');

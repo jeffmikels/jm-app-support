@@ -79,5 +79,9 @@ function jmapp_ajax_save_menu()
 {
 	// print_r($_POST['menu_data']);
 	$menu_data = json_decode(stripslashes($_POST['menu_data']), TRUE);
+
+	// add the notification topics data to the $menu_data
+	$menu_data['default_wp_endpoint'] = home_url();
+	$menu_data['notification_topics'] = jmapp_notifications_topics();
 	jmapp_ajax('write', $menu_data);
 }
