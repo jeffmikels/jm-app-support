@@ -98,77 +98,77 @@ foreach ($options as $key=>$value)
 		<table class="form-table">
 			<?php foreach ($options as $key=>$value): ?>
 
-				<?php if (($value['admin_only'] == 1) && (! current_user_can(JMAPP_ADMIN_CAP))) continue; ?>
+			<?php if (($value['admin_only'] == 1) && (! current_user_can(JMAPP_ADMIN_CAP))) continue; ?>
 
-				<tr valign="top">
-					<th scope="row"><?php echo $value['label']; ?><?php if ($value['admin_only'] == 1):?><br />ADMIN ONLY<?php endif; ?></th>
-					<td>
-						<?php if ($value['type'] == 'checkbox') : ?>
-						<input name="jmapp_options[<?php echo $key; ?>]" type="checkbox" value="<?php echo htmlentities($value['checkvalue']); ?>" <?php checked('1', $value['value']); ?> /> <?php echo $value['label']; ?>
-						<?php elseif ($value['type'] == 'text') : ?>
-						<input style="width:60%;" name="jmapp_options[<?php echo $key; ?>]" type="text" value="<?php echo htmlentities($value['value']); ?>" />
-						<?php elseif ($value['type'] == 'disabled') : ?>
-						<input style="width:60%;"
-							name="jmapp_options[<?php echo $key; ?>]"
-							type="text"
-							disabled="disabled"
-							value="<?php echo htmlentities($value['value']); ?>"
-							/>
-						<?php else: ?>
-						<input
-							style="width:60%;"
-							name="jmapp_options[<?php echo $key; ?>]"
-							type="<?php echo $value['type']; ?>"
-							value="<?php echo htmlentities($value['value']); ?>"
-							/>
-						<?php endif; ?>
-						<p><small><?php echo $value['description']; ?></small></p>
-					</td>
-				</tr>
+			<tr valign="top">
+				<th scope="row"><?php echo $value['label']; ?><?php if ($value['admin_only'] == 1):?><br />ADMIN
+					ONLY<?php endif; ?></th>
+				<td>
+					<?php if ($value['type'] == 'checkbox') : ?>
+					<input name="jmapp_options[<?php echo $key; ?>]" type="checkbox"
+						value="<?php echo htmlentities($value['checkvalue']); ?>" <?php checked('1', $value['value']); ?> />
+					<?php echo $value['label']; ?>
+					<?php elseif ($value['type'] == 'text') : ?>
+					<input style="width:60%;" name="jmapp_options[<?php echo $key; ?>]" type="text"
+						value="<?php echo htmlentities($value['value']); ?>" />
+					<?php elseif ($value['type'] == 'disabled') : ?>
+					<input style="width:60%;" name="jmapp_options[<?php echo $key; ?>]" type="text" disabled="disabled"
+						value="<?php echo htmlentities($value['value']); ?>" />
+					<?php else: ?>
+					<input style="width:60%;" name="jmapp_options[<?php echo $key; ?>]" type="<?php echo $value['type']; ?>"
+						value="<?php echo htmlentities($value['value']); ?>" />
+					<?php endif; ?>
+					<p><small><?php echo $value['description']; ?></small></p>
+				</td>
+			</tr>
 
 			<?php endforeach; ?>
-			
+
 		</table>
 
 		<?php submit_button(); ?>
 
 	</form>
-	
+
+	<?php /*
 	<h3>Registered Devices</h3>
 	<?php if (!empty($stored_options['fcm_app_topic'])) : ?>
-		
-		<table style="width:100%;">
-			<tr>
-				<th style="border-bottom:1px solid black;">Created</th>
-				<th style="border-bottom:1px solid black;">Platform</th>
-				<th style="border-bottom:1px solid black;">Name</th>
-				<th style="border-bottom:1px solid black;">Token</th>
-			</tr>
-		
-	<?php
-		$key = '2c6b294025577877583f4834793152543845495f34213c6b507b3f52773a7d2a';
-		$url = "https://jeffmikels.org/notifications/api.php?key=${key}&action=devices&topic=";
-		$url .= $stored_options['fcm_app_topic'];
-		$devices = json_decode(file_get_contents($url), TRUE);
-	?>
-	
-	<?php foreach($devices['data'] as $device) : ?>
-		
+
+	<table style="width:100%;">
+		<tr>
+			<th style="border-bottom:1px solid black;">Created</th>
+			<th style="border-bottom:1px solid black;">Platform</th>
+			<th style="border-bottom:1px solid black;">Name</th>
+			<th style="border-bottom:1px solid black;">Token</th>
+		</tr>
+
+		<?php
+		// $key = '2c6b294025577877583f4834793152543845495f34213c6b507b3f52773a7d2a';
+		// $url = "https://jeffmikels.org/notifications/api.php?key=${key}&action=devices&topic=";
+		// $url .= $stored_options['fcm_app_topic'];
+		// $devices = json_decode(file_get_contents($url), TRUE);
+		$devices = [];
+
+		?>
+
+		<?php foreach($devices['data'] as $device) : ?>
+
 		<tr>
 			<td style="text-align:center;"><?php echo $device['created_at'] ?></td>
 			<td style="text-align:center;"><?php echo $device['platform'] ?></td>
 			<td style="text-align:center;"><?php echo $device['name'] ?></td>
-			<td style="text-align:center;"><textarea rows=2 style="font-size:8px;width:300px;"><?php echo $device['device_token']?></textarea></td>
+			<td style="text-align:center;"><textarea rows=2
+					style="font-size:8px;width:300px;"><?php echo $device['device_token']?></textarea></td>
 		</tr>
-		
-	<?php endforeach;?>
-	
-		</table>
 
+		<?php endforeach;?>
+
+	</table>
 	<?php else:?>
-		
+
 	NONE
-		
+
 	<?php endif;?>
-	
+	*/?>
+
 </div>

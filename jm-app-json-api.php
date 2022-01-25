@@ -73,6 +73,11 @@ define('JMAPP_SCORE_APIKEY', 'b34fbaddc8a0059358c901f7b682018e');
 			@auth required
 			device_token={token}
 
+	device token for non-logged-in user
+		POST wp-json/jmapp/v1/device/add
+			@auth not required
+			device_token={token}
+
 	user authentication (via JWT plugin)
 		get authentication token
 		POST wp-json/jwt-auth/v1/token/
@@ -719,8 +724,11 @@ function jmapp_user_reset_handler_2($request) {
 
 function jmapp_user_device_handler($request) {
 	$user = wp_get_current_user();
-	if (!isset($user->ID) || $user->ID == 0)
+	if (!isset($user->ID) || $user->ID == 0) {
+		// should we record this device token anyway?
+		// $res = jmapp_user_add_device(0, $request['device']);
 		return ['error' => 'user edit failed, not logged in'];
+	}
 	
 	$res = jmapp_user_add_device($user->ID, $request['device']);
 	if (FALSE === $res){
@@ -960,101 +968,101 @@ function jmapp_strip_tags_content_simply_json($text, $tags = '') {
 	$tags = array_unique($tags[1]);
 	if(is_array($tags) and count($tags) > 0) {
 		return preg_replace('@<(?!(?:'. implode('|', $tags) .')\b)(\w+)\b.*?>.*?</\1>@si', '', $text);
-	} else {
-		return preg_replace('@<(\w+)\b.*?>.*?</\1>@si', '', $text);
+} else {
+return preg_replace('@<(\w+)\b.*?>.*?</\1>@si', '', $text);
 	}
 	return $text;
-}
+	}
 
 
-// query is passed by reference
-function jmapp_simply_json_custom_query($query)
-{
+	// query is passed by reference
+	function jmapp_simply_json_custom_query($query)
+	{
 	// if (is_admin() || ! $query->is_main_query()) return;
-	
+
 	if (isset($_REQUEST['json'] ))
 	{
-		// eliminate password protected posts
-		$query->set('has_password', FALSE);
-		
-		// this is the default, but if a user is logged in
-		// private posts will be included as well
-		// setting it manually here makes private posts never show up
-		// $query->set('post_status', 'publish');
-		
+	// eliminate password protected posts
+	$query->set('has_password', FALSE);
 
-		// posts to retrieve by default
-		$count = 20;
-		if (isset($_REQUEST['posts_per_page'])) $count = $_REQUEST['posts_per_page'];
-		if (isset($_REQUEST['count'])) $count = $_REQUEST['count'];
-		$query->set('posts_per_page',$count);
+	// this is the default, but if a user is logged in
+	// private posts will be included as well
+	// setting it manually here makes private posts never show up
+	// $query->set('post_status', 'publish');
 
-		// post offset
-		if (isset($_REQUEST['offset'])) $query->set('offset',$_REQUEST['offset']);
-		if (isset($_REQUEST['page'])) $query->set('offset',((int)$_REQUEST['page'] - 1) * $count);
 
-		// post types
-		$query->query['post_type'] = 'any';
-		if (isset($_REQUEST['post_type'])) $query->set('post_type',$_REQUEST['post_type']);
-		if (isset($_REQUEST['orderby'])) $query->set('orderby',$_REQUEST['orderby']);
-		if (isset($_REQUEST['order'])) $query->set('order',$_REQUEST['order']);
-		
-		// multiple post ids
-		if (isset($_REQUEST['ids']))
-		{
-			$ids = $_REQUEST['ids'];
-			if (!is_array($ids)) $ids = explode(',', $ids);
-			if (!empty($ids))
-			{
-				$query->set('page_id',NULL);
-				$query->set('post_type', 'any');
-				$query->set('post__in', $ids);
-				$query->set('ignore_sticky_posts',True);
-			}
-		}
-		
-		// Wordpress Picks up the 'p' query directly (for individual posts), but we need to
-		// reset the post_type to override any accidental post_type settings above
-		if (isset($_REQUEST['p'])) $query->set('post_type','any');
-		
-		// query by simple search
-		// To handle searching, simply use the 's' query variable directly.
-		
-		// query by meta values
-		if (isset($_REQUEST['meta_query'])) $query->set('meta_query',$_REQUEST['meta_query']);
-		
-		// do debug
-		if (isset($_REQUEST['debug']))
-		{
-			print_r($query);
-			print_r($_REQUEST);
-			die();
-		}
+	// posts to retrieve by default
+	$count = 20;
+	if (isset($_REQUEST['posts_per_page'])) $count = $_REQUEST['posts_per_page'];
+	if (isset($_REQUEST['count'])) $count = $_REQUEST['count'];
+	$query->set('posts_per_page',$count);
+
+	// post offset
+	if (isset($_REQUEST['offset'])) $query->set('offset',$_REQUEST['offset']);
+	if (isset($_REQUEST['page'])) $query->set('offset',((int)$_REQUEST['page'] - 1) * $count);
+
+	// post types
+	$query->query['post_type'] = 'any';
+	if (isset($_REQUEST['post_type'])) $query->set('post_type',$_REQUEST['post_type']);
+	if (isset($_REQUEST['orderby'])) $query->set('orderby',$_REQUEST['orderby']);
+	if (isset($_REQUEST['order'])) $query->set('order',$_REQUEST['order']);
+
+	// multiple post ids
+	if (isset($_REQUEST['ids']))
+	{
+	$ids = $_REQUEST['ids'];
+	if (!is_array($ids)) $ids = explode(',', $ids);
+	if (!empty($ids))
+	{
+	$query->set('page_id',NULL);
+	$query->set('post_type', 'any');
+	$query->set('post__in', $ids);
+	$query->set('ignore_sticky_posts',True);
+	}
+	}
+
+	// Wordpress Picks up the 'p' query directly (for individual posts), but we need to
+	// reset the post_type to override any accidental post_type settings above
+	if (isset($_REQUEST['p'])) $query->set('post_type','any');
+
+	// query by simple search
+	// To handle searching, simply use the 's' query variable directly.
+
+	// query by meta values
+	if (isset($_REQUEST['meta_query'])) $query->set('meta_query',$_REQUEST['meta_query']);
+
+	// do debug
+	if (isset($_REQUEST['debug']))
+	{
+	print_r($query);
+	print_r($_REQUEST);
+	die();
+	}
 	}
 	// not needed... the variable is passed by reference
 	// return $query;
-}
-// some plugins for some reason hijack the number of posts
-// we use a high priority to make sure our request gets processed at the end
-add_action('pre_get_posts', 'jmapp_simply_json_custom_query', 9999);
+	}
+	// some plugins for some reason hijack the number of posts
+	// we use a high priority to make sure our request gets processed at the end
+	add_action('pre_get_posts', 'jmapp_simply_json_custom_query', 9999);
 
 
-// this runs before the other query filter, but it is much more sensitive
-function jmapp_simply_json_check_post_type($request)
-{
+	// this runs before the other query filter, but it is much more sensitive
+	function jmapp_simply_json_check_post_type($request)
+	{
 	// post categories should be specified on command line with category_name=whatever
 	// however, for backwards compatibility with older apps, we leave this code here
 	if (isset($_REQUEST['category']))
 	{
-		$request['category_name'] = $_REQUEST['category'];
-		$request['post_type'] = 'any';
+	$request['category_name'] = $_REQUEST['category'];
+	$request['post_type'] = 'any';
 	}
 	return $request;
-}
-add_action('request', 'jmapp_simply_json_check_post_type');
+	}
+	add_action('request', 'jmapp_simply_json_check_post_type');
 
-/**
- * Wordpress Actions
- */
-// add_action('template_redirect' , 'template_redirect_simply_json', 0);
-add_action('wp' , 'jmapp_simply_json', 0);
+	/**
+	* Wordpress Actions
+	*/
+	// add_action('template_redirect' , 'template_redirect_simply_json', 0);
+	add_action('wp' , 'jmapp_simply_json', 0);
