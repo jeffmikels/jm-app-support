@@ -381,6 +381,8 @@ function jmapp_scores_post_handler($request)
 	// 	@auth not required
 	// 	POST wp-json/jmapp/v1/scores
 	// 	( args: score, apikey, owner_id, owner_nickname, emoji )
+	$game = $request['game'];
+	if (empty($game)) $game = 'dash'; // backwards compatibility
 	$score = $request['score'];
 	$owner_id = $request['owner_id'];
 	$owner_nickname = $request['owner_nickname'];
@@ -389,7 +391,7 @@ function jmapp_scores_post_handler($request)
 	$apikey = $request['apikey'];
 	if ($apikey != JMAPP_SCORE_APIKEY) return ['error' => 'apikey mismatch'];
 	
-	return jmapp_add_game_score($score, ['id'=>$owner_id, 'nickname'=>$owner_nickname], $emoji);
+	return jmapp_add_game_score($game, $score, ['id'=>$owner_id, 'nickname'=>$owner_nickname], $emoji);
 }
 
 function jmapp_scores_get_handler($request)
