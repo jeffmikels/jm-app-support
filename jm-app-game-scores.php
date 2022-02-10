@@ -15,11 +15,15 @@ function jmapp_get_game_scores()
 	$scores = get_option('jmapp_game_scores');
 	if ($scores === FALSE)
 	{
-		// backwards compatibility
-		return ['top' => [], 'recent' => []];
+		// root level top and recent are for backwards compatibility
+		$scores = ['dash' => ['top' => [], 'recent' => []], 'top' => [], 'recent' => []];
 	}
 	// sort the scores
 	// uasort($scores['top'], 'jmapp_score_compare');
+	
+	// backwards compatibility only on get
+	if (empty($scores['top'])) $scores['top'] = $scores['dash']['top'];
+	if (empty($scores['recent'])) $scores['recent'] = $scores['dash']['recent'];
 	return $scores;
 }
 

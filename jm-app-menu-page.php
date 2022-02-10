@@ -9,7 +9,7 @@ $app_config = jmapp_read_menu_file();
 ?>
 
 <!-- get vue -->
-<script src="https://cdn.jsdelivr.net/npm/vue"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
 <!-- axios -->
 <!-- <script src="https://unpkg.com/axios/dist/axios.min.js"></script> -->
 
